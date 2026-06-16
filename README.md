@@ -1,35 +1,59 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# Master Coffee — Cross-Platform Mobile MVP Ecosystem ☕📱
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
+Концепт и MVP-версия мобильного приложения для сети кофеен **Master Coffee**, разработанная с целью автоматизации процесса заказов, минимизации очередей и геймификации системы лояльности.
 
-* [/iosApp](./iosApp/iosApp) contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
-
-### Build and Run Android Application
-
-To build and run the development version of the Android app, use the run configuration from the run widget
-in your IDE’s toolbar or build it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:assembleDebug
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:assembleDebug
-  ```
-
-### Build and Run iOS Application
-
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+Проект реализован на современном кроссплатформенном стеке разработки и демонстрирует подход к построению гибких мобильных систем с разделением бизнес-логики и UI.
 
 ---
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## 🛠 Технологический стек (Tech Stack)
+
+* **Frontend:**
+  * **Kotlin** (100% кодовой базы).
+  * **Compose Multiplatform** — декларативный UI-фреймворк для сборки нативных приложений под iOS и Android из единого исходного кода.
+  * **Coil3** — оптимизированная асинхронная загрузка и кэширование медиа-контента.
+* **Backend Architecture:**
+  * **Backend-less подход** на базе облачной инфраструктуры **Firebase Firestore** (NoSQL база данных реального времени).
+* **Networking:**
+  * **Ktor Client** — легковесный и быстрый асинхронный HTTP-клиент для экосистемы Kotlin.
+
+---
+
+## 🚀 Ключевой функционал (Key Features)
+
+1. **Интерактивный Главный экран (Interactive Home):**
+  * Интеграция динамических **Stories** (формат Instagram) для мгновенного информирования гостей об акциях и новинках без необходимости обновления приложения в сторах.
+  * Быстрый доступ к выбору ближайшей точки кофейни для самовывоза.
+2. **Геймификация системы лояльности (Loyalty Program):**
+  * Виртуальная карта лояльности с отображением баланса внутренней валюты **MC Coins**.
+  * Визуальный прогресс-бар, мотивирующий пользователя повышать свой уровень скидки (динамический расчет от 3% до 10%).
+3. **Умное меню и Конструктор напитков (Smart Menu):**
+  * Интуитивная навигация по категориям (Классика, Авторские, Холодные напитки).
+  * Экран кастомизации: самостоятельный выбор объема, температуры, альтернативного молока и сиропов. Исключает человеческий фактор и ошибки бариста при приеме заказа.
+4. **QR-идентификация (QR Checkout):**
+  * Генерация уникального QR-кода заказа для мгновенного сканирования на кассе, автоматического списания/начисления бонусов и проведения скидки в один скан.
+
+---
+
+## 🏗 Архитектурные особенности
+
+* **Separation of Concerns:** Четкое разделение UI-слоя (Compose) и бизнес-логики.
+* **Local Caching Strategy:** Использование стратегий кэширования данных для обеспечения мгновенного отклика интерфейса даже при нестабильном интернет-соединении.
+* **Cloud Sync:** Мгновенная синхронизация изменений меню и акций напрямую из облака Firebase Firestore на экраны пользователей.
+
+---
+
+## 📱 Интерфейс приложения (Screenshots)
+
+![screenshot.png](screenshot.png)
+---
+
+## 🔧 Как запустить проект локально (Local Setup)
+
+1. Склонируйте репозиторий:
+2. ```bash
+   git clone [https://github.com/твой-логин/название-репозитория.git](https://github.com/твой-логин/название-репозитория.git)
+   
+2. Откройте проект в Android Studio (рекомендуется версия Ladybug или новее).
+3. Добавьте ваш файл конфигурации google-services.json для Android и GoogleService-Info.plist для iOS в соответствующие модули для связи с вашим инстансом Firebase.
+4. Синхронизируйте Gradle и запустите проект на эмуляторе или реальном устройстве.
