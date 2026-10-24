@@ -1,51 +1,82 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
-	"log"
+	"context"
+	"errors"
+	"log/slog"
 	"net/http"
-	"os" // <-- Добавили пакет os для переменных окружения
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/go-chi/chi/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kairagz27/master-coffee-go/internal/config"
 	"github.com/kairagz27/master-coffee-go/internal/handlers"
+	"github.com/kairagz27/master-coffee-go/internal/repository"
+	"github.com/kairagz27/master-coffee-go/internal/seed"
+	"github.com/kairagz27/master-coffee-go/internal/service"
+	"github.com/kairagz27/master-coffee-go/migrations"
 )
 
 func main() {
-	// 1. Подключаемся к базе
-	// Пытаемся прочитать DSN из переменной окружения
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		// Если переменной нет (запускаем локально из IDE), используем локалхост
-		dsn = "postgres://postgres:password@localhost:5432/coffee_db?sslmode=disable"
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(log)
+	if err := run(log); err != nil {
+		log.Error("API stopped", "error", err.Error())
+		os.Exit(1)
 	}
-
-	db, err := sql.Open("pgx", dsn)
+}
+func run(log *slog.Logger) error {
+	c, err := config.Load()
 	if err != nil {
-		log.Fatal("Ошибка подключения к БД:", err)
+		return err
 	}
-	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		log.Fatal("БД не отвечает:", err)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	startup, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	pc, err := pgxpool.ParseConfig(c.DatabaseURL)
+	if err != nil {
+		return errors.New("invalid database configuration")
 	}
-	fmt.Println("Успешное подключение к PostgreSQL!")
-
-	// Создаем экземпляр нашего хэндлера, передавая ему БД
-	menuHandler := &handlers.MenuHandler{DB: db}
-
-	// 2. Настраиваем роутер
-	r := chi.NewRouter()
-
-	// Теперь маршруты выглядят очень чисто и красиво
-	r.Get("/api/menu", menuHandler.GetAll)
-	r.Post("/api/menu", menuHandler.Create)
-
-	// 3. Запускаем сервер
-	port := ":8080"
-	fmt.Println("Сервер запущен на порту", port)
-	if err := http.ListenAndServe(port, r); err != nil {
-		log.Fatal(err)
+	pc.MaxConns = 15
+	pc.MinConns = 1
+	pc.MaxConnIdleTime = 5 * time.Minute
+	pc.ConnConfig.ConnectTimeout = 5 * time.Second
+	pc.ConnConfig.RuntimeParams["timezone"] = "UTC"
+	pc.ConnConfig.RuntimeParams["statement_timeout"] = "15000"
+	pool, err := pgxpool.NewWithConfig(startup, pc)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	if err = pool.Ping(startup); err != nil {
+		return errors.New("database is not ready")
+	}
+	if c.AutoMigrate {
+		if err = migrations.Apply(startup, pool); err != nil {
+			return err
+		}
+	}
+	if err = seed.Apply(startup, pool, c.SeedDemo, c.DemoPassword); err != nil {
+		return err
+	}
+	svc := &service.Service{Repo: &repository.Repository{Pool: pool}, SessionTTL: c.SessionTTL, QRExpiry: c.QRExpiry}
+	h := &handlers.Handler{Service: svc, Origins: c.Origins, UploadDir: c.UploadDir, Logger: log}
+	server := &http.Server{Addr: c.Address, Handler: h.Router(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 25 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
+	result := make(chan error, 1)
+	go func() { result <- server.ListenAndServe() }()
+	log.Info("API listening", "address", c.Address, "environment", c.Environment)
+	select {
+	case err = <-result:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
+		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return server.Shutdown(shutdown)
 	}
 }

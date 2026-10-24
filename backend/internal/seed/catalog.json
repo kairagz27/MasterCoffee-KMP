@@ -1,0 +1,435 @@
+{
+  "products": [
+    {
+      "name": "Эспрессо",
+      "available": true,
+      "is_drink": true,
+      "id": 1,
+      "sizes": [
+        {
+          "price": 890,
+          "label": "30 мл",
+          "id": "1-30"
+        }
+      ],
+      "category": "Кофе",
+      "description": "Классический насыщенный черный кофе малого объема. Пробуждает и бодрит с первого глотка.",
+      "image_key": "espresso",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Американо",
+      "available": true,
+      "is_drink": true,
+      "id": 2,
+      "sizes": [
+        {
+          "price": 990,
+          "label": "350 мл",
+          "id": "2-350"
+        },
+        {
+          "price": 1190,
+          "label": "450 мл",
+          "id": "2-450"
+        }
+      ],
+      "category": "Кофе",
+      "description": "Эспрессо, разбавленный горячей водой. Идеальный баланс крепости и мягкости для любителей черного кофе.",
+      "image_key": "americano",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Капучино",
+      "available": true,
+      "is_drink": true,
+      "id": 3,
+      "sizes": [
+        {
+          "price": 1290,
+          "label": "350 мл",
+          "id": "3-350"
+        },
+        {
+          "price": 1440,
+          "label": "450 мл",
+          "id": "3-450"
+        }
+      ],
+      "category": "Кофе",
+      "description": "Самый популярный кофейный напиток на основе эспрессо, с добавлением теплого молока и густой, плотной молочной пены.",
+      "image_key": "cappuccino",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Латте",
+      "available": true,
+      "is_drink": true,
+      "id": 4,
+      "sizes": [
+        {
+          "price": 1290,
+          "label": "350 мл",
+          "id": "4-350"
+        },
+        {
+          "price": 1440,
+          "label": "450 мл",
+          "id": "4-450"
+        }
+      ],
+      "category": "Кофе",
+      "description": "Мягкий кофейный напиток с большим количеством молока и тонким слоем пенки. Для тех, кто любит понежнее.",
+      "image_key": "latte",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Флэт Уайт",
+      "available": true,
+      "is_drink": true,
+      "id": 5,
+      "sizes": [
+        {
+          "price": 1190,
+          "label": "250 мл",
+          "id": "5-250"
+        }
+      ],
+      "category": "Кофе",
+      "description": "Насыщенный кофейный вкус. Двойной эспрессо и тонкая молочная пенка.",
+      "image_key": "flatwhite",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Раф",
+      "available": true,
+      "is_drink": true,
+      "id": 6,
+      "sizes": [
+        {
+          "price": 1690,
+          "label": "350 мл",
+          "id": "6-350"
+        }
+      ],
+      "category": "Кофе",
+      "description": "Нежный и невероятно сливочный кофейный напиток, взбитый с ванильным сахаром и сливками.",
+      "image_key": "raf",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Hot Cherry",
+      "available": true,
+      "is_drink": true,
+      "id": 8,
+      "sizes": [
+        {
+          "price": 1590,
+          "label": "350 мл",
+          "id": "8-350"
+        }
+      ],
+      "category": "Авторские",
+      "description": "Авторский согревающий напиток с насыщенным вишневым вкусом и пряными нотками.",
+      "image_key": "hotcherry",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Батч Daiquiri",
+      "available": true,
+      "is_drink": true,
+      "id": 9,
+      "sizes": [
+        {
+          "price": 1290,
+          "label": "350 мл",
+          "id": "9-350"
+        }
+      ],
+      "category": "Авторские",
+      "description": "Уникальный кофейный коктейль с ярким характером и цитрусовым послевкусием.",
+      "image_key": "batchdaiquiri",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Пряный латте",
+      "available": true,
+      "is_drink": true,
+      "id": 10,
+      "sizes": [
+        {
+          "price": 1590,
+          "label": "350 мл",
+          "id": "10-350"
+        }
+      ],
+      "category": "Авторские",
+      "description": "Согревающий латте с авторским миксом специй. Идеален для прохладных дней.",
+      "image_key": "spicedlatte",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Раф Hogwarts",
+      "available": true,
+      "is_drink": true,
+      "id": 11,
+      "sizes": [
+        {
+          "price": 1690,
+          "label": "350 мл",
+          "id": "11-350"
+        }
+      ],
+      "category": "Авторские",
+      "description": "Магический сливочный напиток с секретным сиропом. Вкус, который возвращает в детство.",
+      "image_key": "rafhogwarts",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Глинтвейн",
+      "available": true,
+      "is_drink": true,
+      "id": 12,
+      "sizes": [
+        {
+          "price": 1090,
+          "label": "350 мл",
+          "id": "12-350"
+        }
+      ],
+      "category": "Чаи",
+      "description": "Безалкогольный горячий напиток на основе сока со специями, фруктами и медом.",
+      "image_key": "glintwine",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Манго- имбирь",
+      "available": true,
+      "is_drink": true,
+      "id": 13,
+      "sizes": [
+        {
+          "price": 990,
+          "label": "350 мл",
+          "id": "13-350"
+        }
+      ],
+      "category": "Чаи",
+      "description": "Бодрящий фруктовый чай с тропическим манго и согревающим имбирем.",
+      "image_key": "batchkunshuaq",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Смородина -Грейпфрут",
+      "available": true,
+      "is_drink": true,
+      "id": 14,
+      "sizes": [
+        {
+          "price": 990,
+          "label": "350 мл",
+          "id": "14-350"
+        }
+      ],
+      "category": "Чаи",
+      "description": "Ягодный бум с легкой цитрусовой горчинкой. Отличный заряд витаминов.",
+      "image_key": "hotcherry",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Зеленый- листовой",
+      "available": true,
+      "is_drink": true,
+      "id": 15,
+      "sizes": [
+        {
+          "price": 590,
+          "label": "400 мл",
+          "id": "15-400"
+        }
+      ],
+      "category": "Чаи",
+      "description": "Классический зеленый чай высшего сорта. Освежает и тонизирует.",
+      "image_key": "matchalatte",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Бамбл Кофе",
+      "available": true,
+      "is_drink": true,
+      "id": 16,
+      "sizes": [
+        {
+          "price": 2290,
+          "label": "450 мл",
+          "id": "16-450"
+        }
+      ],
+      "category": "Холодные",
+      "description": "Освежающий слоистый коктейль: апельсиновый фреш, карамель и шот эспрессо.",
+      "image_key": "batchbrew",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Эспрессо Тоник",
+      "available": true,
+      "is_drink": true,
+      "id": 17,
+      "sizes": [
+        {
+          "price": 2290,
+          "label": "450 мл",
+          "id": "17-450"
+        }
+      ],
+      "category": "Холодные",
+      "description": "Холодный кофейный хит: бодрящий эспрессо в сочетании с шипучим тоником и льдом.",
+      "image_key": "batchbrew",
+      "loyalty_eligible": true
+    },
+    {
+      "name": "Матча Тоник",
+      "available": true,
+      "is_drink": true,
+      "id": 18,
+      "sizes": [
+        {
+          "price": 2290,
+          "label": "450 мл",
+          "id": "18-450"
+        }
+      ],
+      "category": "Холодные",
+      "description": "Японский зеленый чай матча с тоником. Яркий цвет и необычный свежий вкус.",
+      "image_key": "matchalatte",
+      "loyalty_eligible": true
+    },
+    {
+      "available": true,
+      "category": "Холодные",
+      "is_drink": true,
+      "name": "Апельсиновый Фреш",
+      "sizes": [
+        {
+          "price": 1990,
+          "id": "19-350",
+          "label": "350 мл"
+        }
+      ],
+      "description": "Свежевыжатый сок из отборных апельсинов. 100% польза.",
+      "image_key": "batchkunshuaq",
+      "id": 19,
+      "loyalty_eligible": false
+    }
+  ],
+  "cafes": [
+    {
+      "name": "Master Coffee",
+      "image_key": "kabanbaybatyra6018",
+      "active": true,
+      "address": "пр. Кабанбай батыра, 60/18",
+      "phone": "+7-778‒324‒36‒24",
+      "id": 1,
+      "working_hours": "Пн—Пт 07:14–23:00  Сб—Вс 08:14–24:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "megasilkway",
+      "active": true,
+      "address": "ТРЦ MEGA Silk Way",
+      "phone": "ok@mastercoffee.kz",
+      "id": 2,
+      "working_hours": "Пн—Пт 07:14–23:00 Сб—Вс 08:14–24:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "kabanbaybatyra56a",
+      "active": true,
+      "address": "пр. Кабанбай батыра, 56а",
+      "phone": "+7‒775‒291‒46‒62",
+      "id": 3,
+      "working_hours": "Пн—Пт 07:14–23:00  Сб—Вс 08:14–24:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "ulydala45",
+      "active": true,
+      "address": "пр. Улы Дала, 45",
+      "phone": "+7‒771‒318‒95‒00",
+      "id": 4,
+      "working_hours": "Пн—Пт 07:14–23:00  Сб—Вс 08:14–24:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "tyran525",
+      "active": true,
+      "address": "пр. Туран, 52/5",
+      "phone": "+7‒771‒700‒53‒83",
+      "id": 5,
+      "working_hours": "Пн—Пт 07:14–23:00  Сб—Вс 08:14–24:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "mangelikel37",
+      "active": true,
+      "address": "пр. Мангилик Ел, 37",
+      "phone": "+7‒775‒323‒24‒19",
+      "id": 6,
+      "working_hours": "Пн—Пт 07:14–01:00  Сб—Вс 08:14–01:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "turan44b",
+      "active": true,
+      "address": "пр. Туран, 44Б",
+      "phone": "+7‒777‒310‒54‒48",
+      "id": 7,
+      "working_hours": "Пн—Пт 07:14–24:00  Сб—Вс 08:14–24:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "alfarabi11",
+      "active": true,
+      "address": "пр. Аль-Фараби, 11/1",
+      "phone": "+7‒747‒460‒80‒34",
+      "id": 8,
+      "working_hours": "Пн—Пт 07:14–23:00  Сб—Вс 08:14–23:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "turkestan8",
+      "active": true,
+      "address": "ул. Туркестан, 8",
+      "phone": "+7‒707‒746‒71‒21",
+      "id": 9,
+      "working_hours": "Пн—Пт 07:14–23:00  Сб—Вс 08:14–23:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "syganak522",
+      "active": true,
+      "address": "ул. Сыганак, 52/2",
+      "phone": "+7‒778‒290‒65‒89",
+      "id": 10,
+      "working_hours": "Пн—Пт 07:14–24:00  Сб—Вс 08:14–24:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "tolebi52",
+      "active": true,
+      "address": "ул. Толе би, 52",
+      "phone": "+7‒747‒398‒00‒32",
+      "id": 11,
+      "working_hours": "Пн—Пт 07:14–23:00  Сб—Вс 08:14–23:00"
+    },
+    {
+      "name": "Master Coffee",
+      "image_key": "dinmuhamedkonaev35",
+      "active": true,
+      "address": "ул. Динмухамед Конаев, 35",
+      "phone": "08:14–24:00\\n+7‒702‒249‒41‒13",
+      "id": 12,
+      "working_hours": "Пн—Пт 07:14–23:00  Сб—Вс 08:14–24:00"
+    }
+  ]
+}

@@ -1,0 +1,2173 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Master Coffee local MVP API",
+    "version": "1.0.0",
+    "description": "Cash-register payment, server-authoritative KZT prices, PostgreSQL sessions/orders and cafe scoped staff operations. All timestamps UTC. Email is unverified; no online payment provider, MC Coins, promo or referral claims.",
+    "license": {
+      "name": "Private project"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development only; production must use HTTPS."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Operations"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Catalog"
+    },
+    {
+      "name": "Customers"
+    },
+    {
+      "name": "Staff"
+    },
+    {
+      "name": "Admin"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "get_1",
+        "summary": "Process liveness",
+        "tags": [
+          "Operations"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "get_2",
+        "summary": "Database readiness",
+        "tags": [
+          "Operations"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "post_3",
+        "summary": "Register an unverified email customer",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Register"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "post_4",
+        "summary": "Create an expiring server session",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "get_5",
+        "summary": "Restore current account",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "post_6",
+        "summary": "Revoke current session",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog": {
+      "get": {
+        "operationId": "get_7",
+        "summary": "Catalogue with availability for selected cafe",
+        "tags": [
+          "Catalog"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "cafe_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/cafes": {
+      "get": {
+        "operationId": "get_8",
+        "summary": "Cafe directory",
+        "tags": [
+          "Catalog"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "cafes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Cafe"
+                      }
+                    }
+                  },
+                  "required": [
+                    "cafes"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/loyalty": {
+      "get": {
+        "operationId": "get_9",
+        "summary": "Current account receipt balance and tier",
+        "tags": [
+          "Customers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Loyalty"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/quote": {
+      "post": {
+        "operationId": "post_10",
+        "summary": "Calculate a five minute server quote",
+        "tags": [
+          "Customers"
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteInput"
+              }
+            }
+          }
+        },
+        "description": "Whole integer KZT. Beverage total rounded half up once; source discount tiers 3/5/7/10 at 0/50/70/100 completed paid eligible receipts. Customer role required."
+      }
+    },
+    "/api/v1/orders": {
+      "post": {
+        "operationId": "post_11",
+        "summary": "Create order atomically from reviewed quote",
+        "tags": [
+          "Customers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Previously created order for same key and quote.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "quote_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "quote_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "description": "Same key with another quote409. Concurrent equal keys return one order. A quote can create only one order. Price, catalogue snapshot or loyalty change409 requires a fresh quote. Unknown amount fields rejected."
+      },
+      "get": {
+        "operationId": "get_12",
+        "summary": "Own descending order history",
+        "tags": [
+          "Customers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/orders/{id}": {
+      "get": {
+        "operationId": "get_13",
+        "summary": "Read own order and server QR",
+        "tags": [
+          "Customers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/cancel": {
+      "post": {
+        "operationId": "post_14",
+        "summary": "Cancel own created unpaid order",
+        "tags": [
+          "Customers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/qr": {
+      "post": {
+        "operationId": "post_15",
+        "summary": "Rotate own unpaid order QR",
+        "tags": [
+          "Customers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Replaces old token; default lifetime30 minutes. Paid or cancelled order409."
+      }
+    },
+    "/api/v1/staff/orders": {
+      "get": {
+        "operationId": "get_16",
+        "summary": "Cafe scoped active queue or terminal number search",
+        "tags": [
+          "Staff"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cafe_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Admins may filter cafes; staff assignment always enforced."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "description": "Without search only active statuses, filtered before LIMIT. With search terminal orders are included. Staff responses omit QR."
+      }
+    },
+    "/api/v1/staff/orders/lookup": {
+      "post": {
+        "operationId": "post_17",
+        "summary": "Find order by number or validate QR",
+        "tags": [
+          "Staff"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "description": "QR accepts mastercoffee:order:TOKEN or raw token. Expired410; consumed409; foreign cafe403. Number lookup may find already paid/completed orders."
+      }
+    },
+    "/api/v1/staff/orders/{id}": {
+      "get": {
+        "operationId": "get_18",
+        "summary": "Inspect assigned cafe order",
+        "tags": [
+          "Staff"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/staff/orders/{id}/payment": {
+      "post": {
+        "operationId": "post_19",
+        "summary": "Cashier confirms actual payment at register",
+        "tags": [
+          "Staff"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "qr_token": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Payment status is separate. Empty body object permits authenticated order number fallback. qr_token binds scanned QR and checks expiry/single use; accepts raw token or payload. Repeating number-based payment is idempotent; repeating QR-bound payment409."
+      }
+    },
+    "/api/v1/staff/orders/{id}/status": {
+      "patch": {
+        "operationId": "patch_20",
+        "summary": "Apply one permitted preparation transition",
+        "tags": [
+          "Staff"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "accepted",
+                      "preparing",
+                      "ready",
+                      "completed",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "description": "Paid required for created→accepted→preparing→ready→completed. Repeating same status idempotent. Cancel only created+unpaid. Ledger awards one eligible receipt at paid+completed atomically."
+      }
+    },
+    "/api/v1/admin/catalog": {
+      "get": {
+        "operationId": "get_21",
+        "summary": "Read catalogue including inactive stories",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cafe_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/products/{id}": {
+      "put": {
+        "operationId": "put_22",
+        "summary": "Create or replace product and size definitions",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "*"
+              ]
+            },
+            "description": "Atomic create precondition: existing product409."
+          }
+        ],
+        "description": "New products initially available in all cafes; existing availability remains. Changes never rewrite order snapshots. loyalty_eligible requires is_drink."
+      }
+    },
+    "/api/v1/admin/cafes/{cafe}/products/{id}": {
+      "patch": {
+        "operationId": "patch_23",
+        "summary": "Change availability in one cafe",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "available": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "available"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "available": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "available"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "cafe",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/stories/{id}": {
+      "put": {
+        "operationId": "put_24",
+        "summary": "Create or replace story",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Story"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoryInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_25",
+        "summary": "Delete story",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/images": {
+      "post": {
+        "operationId": "post_26",
+        "summary": "Store validated local JPEG or PNG",
+        "tags": [
+          "Admin"
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Maximum5 MiB and4096×4096. File is decoded, stored under random name; original filename ignored.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/uploads/{name}": {
+      "get": {
+        "operationId": "get_27",
+        "summary": "Read public immutable uploaded image",
+        "tags": [
+          "Catalog"
+        ],
+        "responses": {
+          "200": {
+            "description": "Image bytes",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "JSON error; 400 malformed/unknown fields, 401 invalid session, 403 role/cafe, 404 missing resource, 409 business conflict, 410 expired QR, 413 limit, 415 media, 422 validation, 429 auth throttle, 500 internal, 503 database, 504 timeout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Opaque256-bit session token, not JWT; expires and revocable."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "request_id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "request_id"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "staff",
+              "admin"
+            ]
+          },
+          "cafe_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "email_verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "role",
+          "cafe_id",
+          "email_verified"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "token",
+          "expires_at",
+          "user"
+        ]
+      },
+      "Cafe": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "working_hours": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "image_key": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "working_hours",
+          "phone",
+          "image_key",
+          "active"
+        ]
+      },
+      "Size": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "price"
+        ]
+      },
+      "Product": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "image_key": {
+            "type": "string"
+          },
+          "is_drink": {
+            "type": "boolean"
+          },
+          "loyalty_eligible": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "sizes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Size"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "category",
+          "image_key",
+          "is_drink",
+          "loyalty_eligible",
+          "available",
+          "sizes"
+        ]
+      },
+      "Addon": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "syrup",
+              "essence",
+              "milk"
+            ]
+          },
+          "price": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "group",
+          "price"
+        ]
+      },
+      "Story": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "image_url",
+          "active"
+        ]
+      },
+      "Catalog": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cafes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Cafe"
+            }
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            }
+          },
+          "addons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Addon"
+            }
+          },
+          "stories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Story"
+            }
+          }
+        },
+        "required": [
+          "cafes",
+          "products",
+          "addons",
+          "stories"
+        ]
+      },
+      "ItemInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "size_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "addon_ids": {
+            "type": "array",
+            "maxItems": 6,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "sugar": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "order_type": {
+            "type": "string",
+            "enum": [
+              "takeaway",
+              "dine_in"
+            ]
+          },
+          "temperature": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "hot",
+              "cool"
+            ]
+          }
+        },
+        "required": [
+          "product_id",
+          "size_id",
+          "quantity",
+          "addon_ids",
+          "sugar",
+          "order_type",
+          "temperature"
+        ]
+      },
+      "Item": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "product_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size_id": {
+            "type": "string"
+          },
+          "size_label": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "addon_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "addon_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sugar": {
+            "type": "integer"
+          },
+          "order_type": {
+            "type": "string"
+          },
+          "temperature": {
+            "type": "string"
+          },
+          "unit_price": {
+            "type": "integer"
+          },
+          "line_total": {
+            "type": "integer"
+          },
+          "is_drink": {
+            "type": "boolean"
+          },
+          "loyalty_eligible": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "size_id",
+          "size_label",
+          "quantity",
+          "addon_ids",
+          "addon_names",
+          "sugar",
+          "order_type",
+          "temperature",
+          "unit_price",
+          "line_total",
+          "is_drink",
+          "loyalty_eligible"
+        ]
+      },
+      "QuoteInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cafe_id": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "items": {
+              "$ref": "#/components/schemas/ItemInput"
+            }
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "cafe_id",
+          "items"
+        ]
+      },
+      "Loyalty": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "qualifying_orders": {
+            "type": "integer"
+          },
+          "discount_percent": {
+            "type": "integer",
+            "enum": [
+              3,
+              5,
+              7,
+              10
+            ]
+          },
+          "next_threshold": {
+            "type": "integer",
+            "nullable": true
+          },
+          "next_discount_percent": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": [
+          "qualifying_orders",
+          "discount_percent",
+          "next_threshold",
+          "next_discount_percent"
+        ]
+      },
+      "QR": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "used": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "token",
+          "payload",
+          "expires_at",
+          "used"
+        ]
+      },
+      "Register": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "minLength": 12,
+            "maxLength": 72,
+            "description": "12–72 UTF-8 bytes (bcrypt limit)."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "name"
+        ]
+      },
+      "Login": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "Empty": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "StoryInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "image_url": {
+            "type": "string",
+            "description": "HTTPS URL or server /uploads/ path."
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title",
+          "image_url"
+        ]
+      },
+      "Quote": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cafe_id": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          },
+          "subtotal": {
+            "type": "integer"
+          },
+          "discount_percent": {
+            "type": "integer",
+            "enum": [
+              3,
+              5,
+              7,
+              10
+            ]
+          },
+          "discount": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "KZT"
+            ]
+          },
+          "money_unit": {
+            "type": "string",
+            "enum": [
+              "whole_kzt"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "expires_at",
+          "cafe_id",
+          "items",
+          "subtotal",
+          "discount_percent",
+          "discount",
+          "total",
+          "currency",
+          "money_unit"
+        ]
+      },
+      "Order": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cafe_id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "accepted",
+              "preparing",
+              "ready",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "payment_status": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "paid"
+            ]
+          },
+          "subtotal": {
+            "type": "integer"
+          },
+          "discount_percent": {
+            "type": "integer",
+            "enum": [
+              3,
+              5,
+              7,
+              10
+            ]
+          },
+          "discount": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "KZT"
+            ]
+          },
+          "money_unit": {
+            "type": "string",
+            "enum": [
+              "whole_kzt"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          },
+          "comment": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "qr": {
+            "$ref": "#/components/schemas/QR"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "sequence",
+          "cafe_id",
+          "user_id",
+          "status",
+          "payment_status",
+          "subtotal",
+          "discount_percent",
+          "discount",
+          "total",
+          "currency",
+          "money_unit",
+          "items",
+          "comment",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "OrderPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            }
+          },
+          "next_before": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "required": [
+          "orders",
+          "next_before"
+        ]
+      },
+      "ProductInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "image_key": {
+            "type": "string"
+          },
+          "is_drink": {
+            "type": "boolean"
+          },
+          "loyalty_eligible": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "sizes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Size"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "category",
+          "image_key",
+          "is_drink",
+          "loyalty_eligible",
+          "sizes"
+        ]
+      }
+    }
+  }
+}
+

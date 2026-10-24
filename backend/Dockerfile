@@ -1,29 +1,15 @@
-# Этап 1: Сборка (builder)
-FROM golang:1.27-alpine AS builder
-
-# Папка внутри контейнера, где будет идти работа
-WORKDIR /app
-
-# Копируем файлы зависимостей и скачиваем их
+FROM golang:1.27.1-alpine AS builder
+WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-
-# Копируем весь остальной код проекта
 COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -o /out/coffee-api ./cmd/api && CGO_ENABLED=0 go build -trimpath -o /out/coffee-migrate ./cmd/migrate
 
-# Собираем бинарник приложения. Назовем его 'coffee-api'
-RUN CGO_ENABLED=0 GOOS=linux go build -o coffee-api ./cmd/api/main.go
-
-# Этап 2: Финальный легковесный образ
-FROM alpine:latest
-
-WORKDIR /root/
-
-# Копируем только готовый бинарник из первого этапа
-COPY --from=builder /app/coffee-api .
-
-# Сообщаем, что контейнер будет слушать 8080 порт
+FROM alpine:3.22
+RUN apk add --no-cache ca-certificates && addgroup -S coffee && adduser -S coffee -G coffee && mkdir -p /data/uploads && chown -R coffee:coffee /data
+WORKDIR /app
+COPY --from=builder /out/coffee-api /out/coffee-migrate /app/
+USER coffee
 EXPOSE 8080
-
-# Команда запуска
-CMD ["./coffee-api"]
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s CMD wget -q -O /dev/null http://127.0.0.1:8080/readyz || exit 1
+CMD ["/app/coffee-api"]
