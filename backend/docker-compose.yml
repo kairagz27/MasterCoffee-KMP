@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Наш Go-сервер
+  api:
+    build: .                 # Говорит Докеру собрать образ из нашего Dockerfile
+    container_name: coffee_api
+    ports:
+      - "8080:8080"          # Пробрасываем порт наружу
+    environment:
+      # Вот тут мы передаем DSN! Обрати внимание, хост теперь не localhost, а имя контейнера БД: 'db'
+      - DATABASE_URL=postgres://postgres:password@db:5432/coffee_db?sslmode=disable
+    depends_on:
+      - db                   # Сервер должен запускаться после базы
+
+  # Наша база данных (осталась как была)
+  db:
+    image: postgres:15-alpine
+    container_name: coffee_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: coffee_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
