@@ -45,7 +45,8 @@ fun CartScreen(state: CoffeeState, model: CoffeeViewModel) {
                         Text(product?.let { catalogText(it.name, lang) } ?: "#${line.productId}", style = MaterialTheme.typography.titleLarge)
                         Text(size?.label ?: line.sizeId)
                         line.addonIds.mapNotNull { id -> state.catalog?.addons?.firstOrNull { it.id == id } }.forEach { Text(catalogText(it.name, lang), style = MaterialTheme.typography.bodySmall) }
-                        Text(lineOptions(line.sugar, line.orderType, line.temperature, lang), style = MaterialTheme.typography.bodySmall)
+                        if (product?.isDrink != false) Text(lineOptions(line.sugar, line.orderType, line.temperature, lang), style = MaterialTheme.typography.bodySmall)
+                        else Text(text(if (line.orderType == "takeaway") Copy.Takeaway else Copy.DineIn, lang), style = MaterialTheme.typography.bodySmall)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { model.quantity(index, line.quantity - 1) }, enabled = !state.pending && !state.busy) { Icon(if (line.quantity == 1) Icons.Outlined.Delete else Icons.Outlined.Remove, text(Copy.Remove, lang)) }
                             Text("${line.quantity}", style = MaterialTheme.typography.titleMedium)
@@ -174,7 +175,8 @@ private fun OrderLineSummary(line: OrderLine, lang: String) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("${line.quantity} × " + catalogText(line.name, lang) + " · ${line.sizeLabel}", style = MaterialTheme.typography.titleMedium)
         line.addonNames.forEach { Text(catalogText(it, lang), style = MaterialTheme.typography.bodySmall) }
-        Text(lineOptions(line.sugar, line.orderType, line.temperature, lang), style = MaterialTheme.typography.bodySmall)
+        if (line.isDrink) Text(lineOptions(line.sugar, line.orderType, line.temperature, lang), style = MaterialTheme.typography.bodySmall)
+        else Text(text(if (line.orderType == "takeaway") Copy.Takeaway else Copy.DineIn, lang), style = MaterialTheme.typography.bodySmall)
         Text("${line.lineTotal} ₸")
     }
 }

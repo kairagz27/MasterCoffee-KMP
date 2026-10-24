@@ -78,7 +78,7 @@ private fun ErrorBanner(error: CoffeeFailure, lang: String, dismiss: () -> Unit)
     val copy = when (error.code) {
         "auth_validation" -> Copy.AuthValidation
         "invalid_credentials" -> Copy.LoginFailed
-        "email_exists", "email_taken" -> Copy.EmailExists
+        "email_exists", "email_taken", "account_exists" -> Copy.EmailExists
         else -> when(error.kind) { FailureKind.NETWORK -> Copy.NetworkError; FailureKind.TIMEOUT -> Copy.TimeoutError; FailureKind.UNAUTHORIZED -> Copy.SessionExpired; FailureKind.PRICE_CHANGED -> Copy.PriceChanged; FailureKind.INVALID -> Copy.InvalidError; FailureKind.SERVER -> Copy.ServerError }
     }
     Surface(color = MaterialTheme.colorScheme.errorContainer) {
@@ -176,7 +176,7 @@ private fun categoryText(value: String, language: String) = when(value.lowercase
 private fun ProductCard(product: Product, lang: String, enabled: Boolean, modifier: Modifier, select: () -> Unit) {
     Card(modifier = modifier, shape = RoundedCornerShape(22.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(painterResource(coffeeImage(product.imageKey)), null, Modifier.fillMaxWidth().height(142.dp), contentScale = ContentScale.Fit)
+            ProductImage(product.imageKey, null, Modifier.fillMaxWidth().height(142.dp))
             Text(catalogText(product.name, lang), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(product.sizes.minOfOrNull { it.price }?.let { "$it ₸" }.orEmpty(), style = MaterialTheme.typography.bodyLarge)
             Button(onClick = select, enabled = enabled && product.available && product.sizes.isNotEmpty(), modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp), shape = RoundedCornerShape(14.dp)) { Text(text(if (product.available) Copy.AddToCart else Copy.Unavailable, lang), maxLines = 2) }

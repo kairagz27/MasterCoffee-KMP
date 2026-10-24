@@ -2,6 +2,18 @@ package kz.master_coffee.app.presentation
 
 import mastercoffee.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import androidx.compose.runtime.Composable
+import androidx.compose.foundation.Image
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+
+@Composable
+fun ProductImage(key: String, description: String?, modifier: Modifier, scale: ContentScale = ContentScale.Fit) {
+    if (key.startsWith("https://") || key.startsWith("http://")) {
+        coil3.compose.AsyncImage(model = key, contentDescription = description, modifier = modifier, contentScale = scale, error = painterResource(Res.drawable.master_logo2), placeholder = painterResource(Res.drawable.master_logo2))
+    } else Image(painterResource(coffeeImage(key)), description, modifier, contentScale = scale)
+}
 
 /** API and persisted data contain stable keys only. Resource objects never cross the UI boundary. */
 fun coffeeImage(key: String): DrawableResource = when (key) {

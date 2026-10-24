@@ -37,7 +37,7 @@ class SettingsLocalStore(private val settings: Settings = Settings()) : LocalSto
         set(value) { settings.putString("mvp.theme", value) }
     override fun catalog(cafeId: Int?): Catalog? = settings.getStringOrNull("mvp.catalog.${cafeId ?: 0}")?.let { runCatching { coffeeJson.decodeFromString<CatalogDto>(it).domain() }.getOrNull() }
     override fun saveCatalog(cafeId: Int?, catalog: Catalog) {
-        val dto = CatalogDto(catalog.cafes.map { CafeDto(it.id, it.name, it.address, it.hours, it.phone, it.imageKey, it.active) }, catalog.products.map { p -> ProductDto(p.id, p.name, p.description, p.category, p.imageKey, p.available, p.sizes.map { SizeDto(it.id, it.label, it.price) }) }, catalog.addons.map { AddonDto(it.id, it.name, it.group, it.price) }, catalog.stories.map { StoryDto(it.id, it.title, it.imageUrl) })
+        val dto = CatalogDto(catalog.cafes.map { CafeDto(it.id, it.name, it.address, it.hours, it.phone, it.imageKey, it.active) }, catalog.products.map { p -> ProductDto(p.id, p.name, p.description, p.category, p.imageKey, p.available, p.sizes.map { SizeDto(it.id, it.label, it.price) }, p.isDrink) }, catalog.addons.map { AddonDto(it.id, it.name, it.group, it.price) }, catalog.stories.map { StoryDto(it.id, it.title, it.imageUrl) })
         settings.putString("mvp.catalog.${cafeId ?: 0}", coffeeJson.encodeToString(dto))
     }
     override fun cart(userId: String) = settings.getStringOrNull("mvp.cart.$userId")?.let { runCatching { coffeeJson.decodeFromString<CartDto>(it).domain() }.getOrNull() }

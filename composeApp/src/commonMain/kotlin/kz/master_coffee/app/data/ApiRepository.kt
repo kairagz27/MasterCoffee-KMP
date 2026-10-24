@@ -66,7 +66,10 @@ class ApiRepository(engine: HttpClientEngine, baseUrl: String, allowHttp: Boolea
     override suspend fun catalog(cafeId: Int?): Catalog {
         val catalog = call<CatalogDto>("catalog${cafeId?.let { "?cafe_id=$it" }.orEmpty()}").domain()
         val origin = base.removeSuffix("/api/v1")
-        return catalog.copy(stories = catalog.stories.map { if (it.imageUrl.startsWith("/uploads/")) it.copy(imageUrl = origin + it.imageUrl) else it })
+        return catalog.copy(
+            products = catalog.products.map { if (it.imageKey.startsWith("/uploads/")) it.copy(imageKey = origin + it.imageKey) else it },
+            stories = catalog.stories.map { if (it.imageUrl.startsWith("/uploads/")) it.copy(imageUrl = origin + it.imageUrl) else it }
+        )
     }
     override suspend fun quote(token: String, cart: Cart) = call<QuoteDto>("orders/quote", token, HttpMethod.Post, cart.dto()).domain()
     override suspend fun createOrder(token: String, quoteId: String, idempotencyKey: String) = call<OrderDto>("orders", token, HttpMethod.Post, CreateOrderDto(quoteId), idempotencyKey).domain()

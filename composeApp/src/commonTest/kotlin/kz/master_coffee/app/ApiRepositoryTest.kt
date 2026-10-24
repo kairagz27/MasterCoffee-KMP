@@ -11,6 +11,20 @@ import kz.master_coffee.app.domain.*
 import kotlin.test.*
 
 class ApiRepositoryTest {
+    @Test fun catalogMapsUploadedImagesFoodFlagsAndLegacyDrinkDefaults() = runTest {
+        val repository = ApiRepository(MockEngine {
+            respond("""{"cafes":[],"products":[{"id":20,"name":"Cookie","category":"Food","image_key":"/uploads/cookie.png","is_drink":false,"sizes":[{"id":"20-one","label":"1","price":500}]},{"id":3,"name":"Coffee","category":"Coffee","image_key":"cappuccino","sizes":[{"id":"3-350","label":"350 ml","price":1290}]}],"addons":[],"stories":[{"id":"news","title":"News","image_url":"/uploads/news.png","active":true}]}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }, "http://localhost:8080/api/v1", true)
+        try {
+            val catalog = repository.catalog(1)
+            assertEquals("http://localhost:8080/uploads/cookie.png", catalog.products[0].imageKey)
+            assertFalse(catalog.products[0].isDrink)
+            assertEquals("cappuccino", catalog.products[1].imageKey)
+            assertTrue(catalog.products[1].isDrink)
+            assertEquals("http://localhost:8080/uploads/news.png", catalog.stories.single().imageUrl)
+        } finally { repository.close() }
+    }
+
     @Test fun quoteSendsIdentifiersAndBearerWithoutTrustedClientAmount() = runTest {
         var requestJson: JsonObject? = null
         val repository = ApiRepository(MockEngine { request ->
