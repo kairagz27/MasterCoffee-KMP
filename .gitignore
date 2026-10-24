@@ -23,3 +23,6 @@ backups/
 artifacts/
 *.exe
 *.test
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
