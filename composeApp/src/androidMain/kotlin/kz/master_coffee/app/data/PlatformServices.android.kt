@@ -12,6 +12,8 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import kz.master_coffee.app.BuildConfig
+import kotlinx.serialization.encodeToString
+import kz.master_coffee.app.domain.Cart
 
 object AndroidEnvironment {
     lateinit var context: Context
@@ -50,5 +52,31 @@ private class AndroidTokenStore(context: Context) : SecureTokenStore {
     override fun clear() { check(preferences.edit().clear().commit()) { "Cannot clear secure session" } }
 }
 
-actual fun createPlatformServices() = PlatformServices(OkHttp.create(), AndroidTokenStore(AndroidEnvironment.context), BuildConfig.API_BASE_URL, BuildConfig.DEBUG)
+/** Idempotency recovery must be committed before transmitting the create request. */
+private class AndroidDurableLocalStore(context: Context, private val delegate: LocalStore = SettingsLocalStore()) : LocalStore by delegate {
+    private val preferences = context.getSharedPreferences("durable_orders_v1", Context.MODE_PRIVATE)
+    override fun cart(userId: String): Cart? = preferences.getString("cart:$userId", null)?.let {
+        runCatching { coffeeJson.decodeFromString<CartDto>(it).domain() }.getOrNull()
+    }
+    override fun saveCart(userId: String, cart: Cart?) {
+        val editor = preferences.edit()
+        if (cart == null || cart.items.isEmpty()) editor.remove("cart:$userId")
+        else editor.putString("cart:$userId", coffeeJson.encodeToString(cart.dto()))
+        check(editor.commit()) { "Cannot persist cart" }
+    }
+    override fun pending(userId: String): Pair<String, String>? = preferences.getString(userId, null)?.let {
+        runCatching { coffeeJson.decodeFromString<PendingDto>(it) }.getOrNull()
+    }?.takeIf { it.user_id == userId }?.let { it.quote_id to it.key }
+    override fun savePending(userId: String, quoteId: String, key: String) {
+        val value = coffeeJson.encodeToString(PendingDto(userId, quoteId, key))
+        check(preferences.edit().putString(userId, value).commit()) { "Cannot persist order recovery key" }
+    }
+    override fun clearPending(userId: String) { check(preferences.edit().remove(userId).commit()) { "Cannot clear order recovery key" } }
+    override fun clearAccount(userId: String) { delegate.clearAccount(userId); saveCart(userId, null); clearPending(userId) }
+}
+
+actual fun createPlatformServices(): PlatformServices {
+    val context = AndroidEnvironment.context
+    return PlatformServices(OkHttp.create(), AndroidTokenStore(context), BuildConfig.API_BASE_URL, BuildConfig.DEBUG, AndroidDurableLocalStore(context))
+}
 actual fun newIdempotencyKey(): String = UUID.randomUUID().toString()

@@ -55,6 +55,9 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew
       - name: Common KMP tests on JVM and Android debug APK
@@ -78,8 +81,7 @@ jobs:
         run: node scripts/e2e.mjs
       - name: Restart with preserved volumes
         run: |
-          docker compose restart
-          docker compose up -d --wait
+          sh scripts/verify-persistence.sh
           sh scripts/backup.sh
           sh scripts/restore-check.sh "$(ls -t backups/*.dump | head -n 1)" mastercoffee_restore_ci
       - if: failure()

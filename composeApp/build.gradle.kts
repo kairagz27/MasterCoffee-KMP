@@ -50,14 +50,14 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
 
-            // Генерация QR-кодов (ОСТАВЛЯЕМ ТОЛЬКО ЭТУ, НОВУЮ ВЕРСИЮ!)
+            // Render the opaque QR payload returned by the API.
             implementation("io.github.alexzhirkevich:qrose:1.1.2")
 
             implementation("io.coil-kt.coil3:coil-compose:3.0.4")
             implementation("io.coil-kt.coil3:coil-network-ktor2:3.0.4")
 
 
-            // Ktor для отправки фоток в Cloudinary
+            // Shared API client; the engine is supplied by each platform.
             implementation("io.ktor:ktor-client-core:2.3.9")
             implementation("io.ktor:ktor-client-content-negotiation:2.3.9")
             implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.9")

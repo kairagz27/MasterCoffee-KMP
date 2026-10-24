@@ -162,8 +162,10 @@ class CoffeeViewModel(
         try {
             val order = repository.createOrder(s.token, pending.first, pending.second)
             currentCoroutineContext().ensureActive()
-            local.clearPending(s.user.id)
             local.saveCart(s.user.id, null)
+            // Commit cart removal before dropping the recovery key. A crash between the two
+            // can still recover the existing order; it cannot turn the old cart into a new one.
+            local.clearPending(s.user.id)
             mutable.update { it.copy(cart = null, quote = null, pending = false, activeOrder = order, orders = listOf(order) + it.orders.filterNot { o -> o.id == order.id }, screen = Screen.ORDERS) }
             restartPolling()
         } catch (e: CoffeeFailure) {

@@ -84,6 +84,25 @@ class CoffeeViewModelTest {
         assertEquals(1, repo.creates.size)
     }
 
+    @Test fun recoveryKeySurvivesLocalCleanupFailureAfterServerSuccess() = runTest(dispatcher) {
+        val repo = FakeRepository()
+        val local = MemoryLocal().apply { saveCart("user-a", Cart(1, listOf(CartLine(3, "3-350")))) }
+        val model = model(repo, FakeTokens("token-a"), local)
+        advanceUntilIdle()
+        model.calculate(); advanceUntilIdle()
+        local.failCartRemoval = true
+        model.confirmOrder(); advanceUntilIdle()
+        assertNotNull(local.pending("user-a"))
+        assertNotNull(model.state.value.cart)
+        assertNull(model.state.value.activeOrder)
+        local.failCartRemoval = false
+        model.confirmOrder(); advanceUntilIdle()
+        assertEquals(repo.creates[0], repo.creates[1])
+        assertNull(local.pending("user-a"))
+        assertNull(local.cart("user-a"))
+        assertEquals("order-1", model.state.value.activeOrder?.id)
+    }
+
     @Test fun logoutClearsAccountStateAndCancelsDelayedResponses() = runTest(dispatcher) {
         val repo = FakeRepository()
         val tokens = FakeTokens("token-a")
@@ -173,6 +192,7 @@ private class FakeTokens(var value: String? = null) : SecureTokenStore {
     override fun clear() { value = null }
 }
 private class MemoryLocal : LocalStore {
+    var failCartRemoval = false
     override var language = "ru"
     override var theme = "system"
     private val catalogs = mutableMapOf<Int?, Catalog>()
@@ -181,7 +201,7 @@ private class MemoryLocal : LocalStore {
     override fun catalog(cafeId: Int?) = catalogs[cafeId]
     override fun saveCatalog(cafeId: Int?, catalog: Catalog) { catalogs[cafeId] = catalog }
     override fun cart(userId: String) = carts[userId]
-    override fun saveCart(userId: String, cart: Cart?) { if (cart == null) carts.remove(userId) else carts[userId] = cart }
+    override fun saveCart(userId: String, cart: Cart?) { if (cart == null && failCartRemoval) error("disk write failed"); if (cart == null) carts.remove(userId) else carts[userId] = cart }
     override fun pending(userId: String) = pending[userId]
     override fun savePending(userId: String, quoteId: String, key: String) { pending[userId] = quoteId to key }
     override fun clearPending(userId: String) { pending.remove(userId) }

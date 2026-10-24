@@ -18,5 +18,11 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'pg_restore failed; inspect the separate destination database.' }
     docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$1" -c "SELECT count(*) AS orders FROM orders; SELECT count(*) AS users FROM users; SELECT count(*) AS migrations FROM schema_migrations;"' -- $DatabaseName
     if ($LASTEXITCODE -ne 0) { throw 'Restored schema check failed' }
+    $fingerprintSql = Get-Content -LiteralPath scripts/database-fingerprint.sql -Raw
+    $sourceFingerprint = $fingerprintSql | docker compose exec -T db sh -c 'psql -XqAt -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+    if ($LASTEXITCODE -ne 0) { throw 'Source fingerprint failed' }
+    $restoredFingerprint = $fingerprintSql | docker compose exec -T db sh -c 'psql -XqAt -U "$POSTGRES_USER" -d "$1"' -- $DatabaseName
+    if ($LASTEXITCODE -ne 0) { throw 'Restored fingerprint failed' }
+    if (($sourceFingerprint -join '').Trim() -ne ($restoredFingerprint -join '').Trim()) { throw 'Restored data differs from current source; compare backup time and source activity.' }
     Write-Output "Restored into separate database $DatabaseName; the live database was not changed."
 } finally { Pop-Location }

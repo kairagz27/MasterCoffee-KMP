@@ -30,9 +30,9 @@
   <string name="password_ru">Пароль</string>
   <string name="password_kk">Құпиясөз</string>
   <string name="password_en">Password</string>
-  <string name="authhint_ru">Email не подтверждён. Пароль: не менее 12–72 байта.</string>
-  <string name="authhint_kk">Email расталмаған. Құпиясөз: кемінде 12–72 байт.</string>
-  <string name="authhint_en">Email is unverified. Use at least 12–72 UTF-8 password bytes.</string>
+  <string name="authhint_ru">Email не подтверждён. Пароль: от 12 до 72 байт (UTF-8).</string>
+  <string name="authhint_kk">Email расталмаған. Құпиясөз: 12–72 байт (UTF-8).</string>
+  <string name="authhint_en">Email is unverified. Password: 12–72 UTF-8 bytes.</string>
   <string name="switchregister_ru">Создать аккаунт</string>
   <string name="switchregister_kk">Аккаунт ашу</string>
   <string name="switchregister_en">Create account</string>
@@ -243,8 +243,8 @@
   <string name="servererror_ru">Ошибка сервера. Повторите позже.</string>
   <string name="servererror_kk">Сервер қатесі. Кейін қайталаңыз.</string>
   <string name="servererror_en">Server error. Please retry later.</string>
-  <string name="authvalidation_ru">Укажите email, пароль от 12–72 байта и имя для регистрации.</string>
-  <string name="authvalidation_kk">Email, кемінде 12–72 байтлы құпиясөз және тіркелу үшін атыңызды енгізіңіз.</string>
+  <string name="authvalidation_ru">Укажите email, пароль длиной 12–72 байта и имя для регистрации.</string>
+  <string name="authvalidation_kk">Email, 12–72 байттық құпиясөз және тіркелу үшін атыңызды енгізіңіз.</string>
   <string name="authvalidation_en">Enter email, a password of 12–72 UTF-8 bytes and a name to register.</string>
   <string name="remove_ru">Удалить</string>
   <string name="remove_kk">Жою</string>

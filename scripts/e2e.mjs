@@ -21,7 +21,7 @@ const login = email => request(`${api}/auth/login`, { method: 'POST', body: { em
 await request('/healthz'); await request('/readyz'); checks.push('health/readiness');
 const catalog = await request(`${api}/catalog?cafe_id=1`);
 assert(catalog.cafes.length > 0 && catalog.products.length > 0);
-const product = catalog.products.find(p => p.available && p.is_drink);
+const product = catalog.products.find(p => p.available && p.is_drink && p.loyalty_eligible);
 assert(product?.sizes.length); checks.push('seed catalog and cafes');
 const email = `e2e-${randomUUID()}@example.test`;
 const customer = await request(`${api}/auth/register`, { method: 'POST', expected: 201, body: { email, password, name: 'E2E customer' } });

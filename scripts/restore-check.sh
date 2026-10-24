@@ -9,3 +9,7 @@ cd "$(dirname "$0")/.."
 docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" "$1"' -- "$destination"
 docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$1" --no-owner --exit-on-error' -- "$destination" < "$backup"
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$1" -c "SELECT count(*) FROM orders; SELECT count(*) FROM users; SELECT count(*) FROM schema_migrations;"' -- "$destination"
+source_fingerprint=$(docker compose exec -T db sh -c 'psql -XqAt -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < scripts/database-fingerprint.sql)
+restored_fingerprint=$(docker compose exec -T db sh -c 'psql -XqAt -U "$POSTGRES_USER" -d "$1"' -- "$destination" < scripts/database-fingerprint.sql)
+test "$source_fingerprint" = "$restored_fingerprint" || { echo 'Restored data differs from current source; compare backup time and source activity' >&2; exit 1; }
+echo 'PASS: restored business data matches the source database'
