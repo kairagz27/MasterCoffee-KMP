@@ -18,7 +18,7 @@ import kz.master_coffee.app.domain.*
 
 internal val coffeeJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-class ApiRepository(engine: HttpClientEngine, baseUrl: String, allowHttp: Boolean) : CoffeeRepository {
+class ApiRepository(private val engine: HttpClientEngine, baseUrl: String, allowHttp: Boolean) : CoffeeRepository {
     private val base = baseUrl.trimEnd('/').also {
         require(it.startsWith("https://") || (allowHttp && it.startsWith("http://"))) { "Release requires an HTTPS API URL" }
     }
@@ -78,5 +78,8 @@ class ApiRepository(engine: HttpClientEngine, baseUrl: String, allowHttp: Boolea
     override suspend fun cancel(token: String, id: String) = call<OrderDto>("orders/$id/cancel", token, HttpMethod.Post, emptyMap<String, String>()).domain()
     override suspend fun refreshQr(token: String, id: String) = call<OrderDto>("orders/$id/qr", token, HttpMethod.Post, emptyMap<String, String>()).domain()
     override suspend fun loyalty(token: String) = call<LoyaltyDto>("loyalty", token).let { Loyalty(it.qualifying_orders, it.discount_percent, it.next_threshold, it.next_discount_percent) }
-    override fun close() = client.close()
+    override fun close() {
+        // HttpClient(engine) treats the supplied engine as externally owned in Ktor 2.3.9.
+        try { client.close() } finally { engine.close() }
+    }
 }

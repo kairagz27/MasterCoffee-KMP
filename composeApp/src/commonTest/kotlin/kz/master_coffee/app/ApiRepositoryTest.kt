@@ -5,12 +5,24 @@ import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.http.*
 import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
 import kz.master_coffee.app.data.ApiRepository
 import kz.master_coffee.app.domain.*
 import kotlin.test.*
 
 class ApiRepositoryTest {
+    @Test fun repositoryClosesItsOwnedPlatformEngine() = runTest {
+        val engine = MockEngine { respond("") }
+        val engineJob = engine.coroutineContext[Job]!!
+        val repository = ApiRepository(engine, "http://localhost/api/v1", true)
+        repository.close()
+        withTimeout(1_000) { engineJob.join() }
+        assertTrue(engineJob.isCompleted)
+        repository.close()
+    }
+
     @Test fun catalogMapsUploadedImagesFoodFlagsAndLegacyDrinkDefaults() = runTest {
         val repository = ApiRepository(MockEngine {
             respond("""{"cafes":[],"products":[{"id":20,"name":"Cookie","category":"Food","image_key":"/uploads/cookie.png","is_drink":false,"sizes":[{"id":"20-one","label":"1","price":500}]},{"id":3,"name":"Coffee","category":"Coffee","image_key":"cappuccino","sizes":[{"id":"3-350","label":"350 ml","price":1290}]}],"addons":[],"stories":[{"id":"news","title":"News","image_url":"/uploads/news.png","active":true}]}""", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
