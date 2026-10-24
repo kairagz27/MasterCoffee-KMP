@@ -182,7 +182,7 @@ function editProduct(product) {
     const updated = await api.request(`admin/products/${numericID}`,{method:'PUT',body:{id:numericID,name:name.value.trim(),description:description.value.trim(),category:category.value.trim(),image_key:image.value.trim(),is_drink:isDrink.checked,loyalty_eligible:loyaltyEligible.checked,sizes},headers:product ? undefined : {'If-None-Match':'*'}});
     if (await loadCatalog()) { editProduct(state.catalog.products.find(p => p.id === numericID) || updated); notice('Товар сохранён сервером.'); }
   }); });
-  editor.append(form); if (!product) id.focus();
+  editor.append(form); if (!product) id.focus(); else if (window.matchMedia('(max-width:650px)').matches) { editor.scrollIntoView({block:'start'}); name.focus({preventScroll:true}); }
 }
 function renderStories() {
   const list = $('stories-list'); list.replaceChildren();

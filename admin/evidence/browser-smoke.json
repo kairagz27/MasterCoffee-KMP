@@ -1,0 +1,29 @@
+{
+  "testedAt": "2026-10-24T06:23:35.890Z",
+  "origin": "http://localhost:8081",
+  "orderNumber": "MC-001004",
+  "orderID": "4mmHaXAD1AiS6E2vZ0bc4J5wAsf5OI9jaSH-1Wo8GiU",
+  "initiallyEmpty": true,
+  "viewports": [
+    "1440x900",
+    "390x844"
+  ],
+  "checks": [
+    "real staff/customer/admin login and permissions",
+    "QR lookup and payment",
+    "all preparation states and issuance",
+    "used QR rejection",
+    "session expiry and account DOM isolation",
+    "loading aria state",
+    "stale queue after failed request and recovery",
+    "preserved menu loyalty flag",
+    "real story image upload/create/delete",
+    "desktop and narrow overflow",
+    "keyboard login focus"
+  ],
+  "limitations": [
+    "camera hardware not exercised",
+    "browser is headless isolated Chromium; not a physical phone"
+  ],
+  "unhandledErrors": []
+}
