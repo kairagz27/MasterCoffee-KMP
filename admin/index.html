@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Master Coffee · Сотрудникам</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Перейти к содержимому</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Master Coffee — кабинет сотрудника"><img src="/assets/master-logo.png" alt="Master Coffee" width="220" height="51"></a>
+    <span class="workspace-label">КАБИНЕТ КОФЕЙНИ</span>
+    <div id="session" hidden><span id="session-name"></span><button id="logout" class="quiet" type="button">Выйти</button></div>
+  </header>
+  <main id="main" tabindex="-1">
+    <section id="login-view" class="login-view" aria-labelledby="login-heading">
+      <div class="login-intro"><p class="eyebrow">MASTER COFFEE / КОМАНДА</p><h1 id="login-heading">Хороший кофе.<br>Слаженная смена.</h1><p>Заказы, оплата на кассе и выдача — в одном кабинете.</p><div class="intro-rule"></div><p class="muted">Вход для сотрудников и администраторов.</p></div>
+      <form id="login-form" class="login-form">
+        <h2>Войти в кабинет</h2>
+        <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required maxlength="254" autofocus>
+        <label for="password">Пароль</label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="128">
+        <p id="login-error" class="error" role="alert" hidden></p>
+        <button id="login-button" class="primary" type="submit">Войти</button>
+        <p class="hint">Учётную запись выдаёт администратор. После перезагрузки страницы потребуется войти снова.</p>
+      </form>
+    </section>
+    <div id="workspace" hidden>
+      <nav class="tabs" aria-label="Разделы кабинета"><button id="tab-orders" class="tab active" type="button" aria-current="page">Заказы</button><button id="tab-menu" class="tab" type="button" hidden>Меню</button><button id="tab-stories" class="tab" type="button" hidden>Stories</button></nav>
+      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+      <section id="orders-view" aria-labelledby="orders-heading">
+        <div class="section-heading"><div><p class="eyebrow" id="cafe-name">СМЕНА</p><h1 id="orders-heading">Очередь заказов</h1></div><button id="refresh-orders" class="secondary" type="button">Обновить</button></div>
+        <div class="order-tools"><form id="lookup-form" class="search-form"><label for="order-code">Номер заказа или код из QR</label><div class="input-action"><input id="order-code" name="code" required maxlength="200" autocomplete="off" placeholder="Например, MC-000042"><button class="primary" type="submit">Найти</button></div></form><button id="scan-button" class="secondary scan-button" type="button">Сканировать QR</button></div>
+        <p id="poll-status" class="hint">Обновление каждые 8 секунд, пока вкладка открыта.</p>
+        <div class="order-layout"><section class="queue" aria-label="Заказы кофейни"><div id="queue-heading" class="queue-heading">Активные заказы</div><div id="orders-list" aria-busy="false"></div></section><section id="order-detail" class="order-detail" aria-label="Выбранный заказ" tabindex="-1"><div class="empty-detail"><span class="coffee-mark" aria-hidden="true">☕</span><h2>Выберите заказ</h2><p class="muted">Откройте его из очереди или введите номер.</p></div></section></div>
+      </section>
+      <section id="menu-view" aria-labelledby="menu-heading" hidden><div class="section-heading"><div><p class="eyebrow">КАТАЛОГ</p><h1 id="menu-heading">Меню и доступность</h1></div><button id="refresh-menu" class="secondary" type="button">Обновить</button></div><label for="menu-cafe">Кофейня</label><select id="menu-cafe"></select><div class="management-layout"><div id="products-list" class="management-list" aria-label="Товары"></div><section id="product-editor" class="editor" aria-label="Редактирование товара"><p class="muted">Выберите товар для редактирования.</p></section></div></section>
+      <section id="stories-view" aria-labelledby="stories-heading" hidden><div class="section-heading"><div><p class="eyebrow">НОВОСТИ</p><h1 id="stories-heading">Stories</h1></div><button id="new-story" class="primary" type="button">Добавить story</button></div><div class="management-layout"><div id="stories-list" class="management-list" aria-label="Stories"></div><section id="story-editor" class="editor" aria-label="Редактирование story"><p class="muted">Выберите story или создайте новую.</p></section></div></section>
+    </div>
+  </main>
+  <dialog id="scanner" aria-labelledby="scanner-title"><div class="dialog-heading"><h2 id="scanner-title">Сканирование QR</h2><button id="close-scanner" class="quiet" type="button">Закрыть</button></div><video id="camera" autoplay playsinline muted></video><p id="scanner-status" role="status">Разрешите доступ к камере.</p><p class="hint">Если камера недоступна, закройте окно и введите код вручную.</p></dialog>
+  <footer>MASTER COFFEE <span>Оплата на кассе · Суммы и статусы подтверждает сервер</span></footer>
+</body>
+</html>
