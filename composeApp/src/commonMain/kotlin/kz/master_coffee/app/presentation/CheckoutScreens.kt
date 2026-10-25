@@ -18,12 +18,19 @@ import androidx.compose.ui.unit.dp
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import kotlinx.datetime.*
 import kz.master_coffee.app.domain.*
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 
 @Composable
 fun CartScreen(state: CoffeeState, model: CoffeeViewModel) {
     val lang = state.language
     val cart = state.cart
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize().testTag("cart_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text(text(Copy.Cart, lang), style = MaterialTheme.typography.headlineSmall) }
         if (state.pending) item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
@@ -62,7 +69,7 @@ fun CartScreen(state: CoffeeState, model: CoffeeViewModel) {
             }
             item { OutlinedTextField(cart.comment, model::comment, label = { Text(text(Copy.Comment, lang)) }, enabled = !state.pending && !state.busy, modifier = Modifier.fillMaxWidth(), maxLines = 4) }
             item { Text(text(Copy.Estimate, lang), style = MaterialTheme.typography.bodySmall); Text(text(Copy.PricingUnit, lang), style = MaterialTheme.typography.bodySmall) }
-            if (!state.pending) item { Button(onClick = model::calculate, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(text(Copy.Calculate, lang)) } }
+            if (!state.pending) item { Button(onClick = model::calculate, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("cart_calculate")) { Text(text(Copy.Calculate, lang)) } }
         }
         state.quote?.let { quote -> item {
             Card(shape = RoundedCornerShape(22.dp)) {
@@ -75,7 +82,7 @@ fun CartScreen(state: CoffeeState, model: CoffeeViewModel) {
                     AmountRow(text(Copy.Total, lang), quote.total)
                     Text(text(Copy.QuoteHint, lang), style = MaterialTheme.typography.bodyMedium)
                     Text(text(Copy.Expires, lang) + ": " + localTime(quote.expiresAt), style = MaterialTheme.typography.bodySmall)
-                    if (!state.pending) Button(onClick = model::confirmOrder, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(text(Copy.ConfirmOrder, lang)) }
+                    if (!state.pending) Button(onClick = model::confirmOrder, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("cart_confirm")) { Text(text(Copy.ConfirmOrder, lang)) }
                 }
             }
         } }
@@ -86,13 +93,13 @@ fun CartScreen(state: CoffeeState, model: CoffeeViewModel) {
 fun OrdersScreen(state: CoffeeState, model: CoffeeViewModel) {
     val lang = state.language
     var confirmCancel by remember { mutableStateOf(false) }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize().testTag("orders_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Row(verticalAlignment = Alignment.CenterVertically) { Text(text(Copy.Orders, lang), Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall); IconButton(onClick = model::refreshAccount, enabled = !state.busy) { Icon(Icons.Outlined.Refresh, text(Copy.Refresh, lang)) } } }
         state.activeOrder?.let { order -> item {
             Card(shape = RoundedCornerShape(22.dp)) {
                 Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text(text(Copy.Order, lang) + " № ${order.number}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(statusText(order.status, lang), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+                    Text(statusText(order.status, lang), modifier = Modifier.testTag("order_status").semantics { liveRegion = LiveRegionMode.Polite }, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
                     Text(text(if (order.paymentStatus == "paid") Copy.Paid else Copy.Unpaid, lang), style = MaterialTheme.typography.titleMedium)
                     if (order.status == "ready") Text(text(Copy.ReadyHint, lang))
                     Text(state.catalog?.cafes?.firstOrNull { it.id == order.cafeId }?.address.orEmpty())
@@ -116,7 +123,7 @@ fun OrdersScreen(state: CoffeeState, model: CoffeeViewModel) {
                         Text(text(Copy.ShowToStaff, lang), style = MaterialTheme.typography.bodyMedium)
                         OutlinedButton(onClick = model::refreshQr, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(text(Copy.RefreshQr, lang)) }
                     }
-                    OutlinedButton(onClick = model::refreshOrder, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(text(Copy.Refresh, lang)) }
+                    OutlinedButton(onClick = model::refreshOrder, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("order_refresh")) { Text(text(Copy.Refresh, lang)) }
                     if (order.paymentStatus == "unpaid" && order.status == "created") {
                         Text(text(Copy.OrderCancelledHint, lang), style = MaterialTheme.typography.bodySmall)
                         TextButton(onClick = { confirmCancel = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(text(Copy.CancelOrder, lang)) }
@@ -142,7 +149,7 @@ fun OrdersScreen(state: CoffeeState, model: CoffeeViewModel) {
 @Composable
 fun ProfileScreen(state: CoffeeState, model: CoffeeViewModel) {
     val lang = state.language
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize().testTag("profile_list"), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text(state.user?.name.orEmpty(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold); Text(state.user?.email.orEmpty()); if (state.user?.emailVerified != true) Text(text(Copy.EmailUnverified, lang), style = MaterialTheme.typography.bodySmall) }
         item {
             Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
@@ -161,11 +168,13 @@ fun ProfileScreen(state: CoffeeState, model: CoffeeViewModel) {
         item { Text(text(Copy.Language, lang), style = MaterialTheme.typography.titleMedium); LanguageRow(lang, model::language) }
         item {
             Text(text(Copy.Theme, lang), style = MaterialTheme.typography.titleMedium)
-            listOf("system" to Copy.System, "light" to Copy.Light, "dark" to Copy.Dark).forEach { (key, label) ->
-                Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = state.theme == key, onClick = { model.theme(key) }); Text(text(label, lang)) }
+            Column(Modifier.selectableGroup()) {
+                listOf("system" to Copy.System, "light" to Copy.Light, "dark" to Copy.Dark).forEach { (key, label) ->
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected = state.theme == key, role = Role.RadioButton, onClick = { model.theme(key) }), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = state.theme == key, onClick = null); Text(text(label, lang)) }
+                }
             }
         }
-        item { OutlinedButton(onClick = model::logout, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(text(Copy.Logout, lang)) } }
+        item { OutlinedButton(onClick = model::logout, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("profile_logout")) { Text(text(Copy.Logout, lang)) } }
         if (state.apiAddress.isNotEmpty()) item { SelectionContainer { Text(text(Copy.ApiAddress, lang) + ": " + state.apiAddress, style = MaterialTheme.typography.bodySmall) } }
     }
 }

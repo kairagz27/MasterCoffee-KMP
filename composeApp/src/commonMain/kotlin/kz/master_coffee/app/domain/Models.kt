@@ -35,5 +35,5 @@ interface CoffeeRepository {
     fun close()
 }
 
-enum class FailureKind { NETWORK, TIMEOUT, UNAUTHORIZED, PRICE_CHANGED, INVALID, SERVER }
+enum class FailureKind { NETWORK, TIMEOUT, UNAUTHORIZED, PRICE_CHANGED, INVALID, SERVER, STORAGE }
 class CoffeeFailure(val kind: FailureKind, val code: String = "", val detail: String = "") : Exception(detail)

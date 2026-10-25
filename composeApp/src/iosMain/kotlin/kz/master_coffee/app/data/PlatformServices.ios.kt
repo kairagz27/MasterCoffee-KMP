@@ -58,16 +58,24 @@ private class IosTokenStore(private val account: String = "current_session") : S
 private class IosDurableLocalStore(private val delegate: LocalStore = SettingsLocalStore()) : LocalStore by delegate {
     private fun recovery(userId: String) = IosTokenStore("pending_order:$userId")
     private fun basket(userId: String) = IosTokenStore("cart:$userId")
-    override fun cart(userId: String): Cart? = basket(userId).read()?.let {
-        runCatching { coffeeJson.decodeFromString<CartDto>(it).domain() }.getOrNull()
+    private fun migrate(userId: String) {
+        val marker = IosTokenStore("migration_v1:$userId")
+        if (marker.read() != null) return
+        val oldCart = delegate.cart(userId)
+        val oldPending = delegate.pending(userId)
+        if (basket(userId).read() == null && oldCart != null) basket(userId).write(coffeeJson.encodeToString(oldCart.dto()))
+        if (recovery(userId).read() == null && oldPending != null) recovery(userId).write(coffeeJson.encodeToString(PendingDto(userId, oldPending.first, oldPending.second)))
+        marker.write("1")
+        delegate.saveCart(userId, null); delegate.clearPending(userId)
     }
+    override fun cart(userId: String): Cart? { migrate(userId); return basket(userId).read()?.let { coffeeJson.decodeFromString<CartDto>(it).domain() } }
     override fun saveCart(userId: String, cart: Cart?) {
         if (cart == null || cart.items.isEmpty()) basket(userId).clear()
         else basket(userId).write(coffeeJson.encodeToString(cart.dto()))
     }
-    override fun pending(userId: String): Pair<String, String>? = recovery(userId).read()?.let {
-        runCatching { coffeeJson.decodeFromString<PendingDto>(it) }.getOrNull()
-    }?.takeIf { it.user_id == userId }?.let { it.quote_id to it.key }
+    override fun pending(userId: String): Pair<String, String>? { migrate(userId); return recovery(userId).read()?.let {
+        coffeeJson.decodeFromString<PendingDto>(it).also { record -> check(record.user_id == userId) }
+    }?.let { it.quote_id to it.key } }
     override fun savePending(userId: String, quoteId: String, key: String) { recovery(userId).write(coffeeJson.encodeToString(PendingDto(userId, quoteId, key))) }
     override fun clearPending(userId: String) { recovery(userId).clear() }
     override fun clearAccount(userId: String) { delegate.clearAccount(userId); saveCart(userId, null); clearPending(userId) }
@@ -77,7 +85,7 @@ actual fun createPlatformServices(): PlatformServices {
     val debug = kotlin.native.Platform.isDebugBinary
     val configured = NSBundle.mainBundle.objectForInfoDictionaryKey("MasterCoffeeAPIURL") as? String
     val url = configured?.takeIf { it.isNotBlank() && !it.startsWith("$(") }
-        ?: if (debug) "http://127.0.0.1:8080/api/v1" else "https://api.mastercoffee.example/api/v1"
+        ?: if (debug) "http://127.0.0.1:8080/api/v1" else error("Set MASTER_COFFEE_API_URL to the real HTTPS API before release")
     return PlatformServices(Darwin.create(), IosTokenStore(), url, debug, IosDurableLocalStore())
 }
 actual fun newIdempotencyKey(): String = NSUUID().UUIDString

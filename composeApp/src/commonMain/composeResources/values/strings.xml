@@ -327,6 +327,10 @@
   <string name="sessionrestore_ru">Проверить сохранённую сессию</string>
   <string name="sessionrestore_kk">Сақталған сессияны тексеру</string>
   <string name="sessionrestore_en">Retry saved session</string>
+<string name="storageerror_ru">Не удалось сохранить данные на устройстве. Освободите место и повторите действие. Корзина и ключ повтора сохраняются до подтверждения.</string>
+<string name="storageerror_kk">Құрылғыда деректерді сақтау мүмкін болмады. Орын босатып, әрекетті қайталаңыз. Себет пен қайталау кілті растауға дейін сақталады.</string>
+<string name="storageerror_en">Device storage is unavailable. Free space and retry. Your cart and recovery key remain until confirmation.</string>
+<string name="customerrequired_ru">В приложении нужен аккаунт покупателя. Для работы сотрудника или администратора откройте веб-кабинет кофейни.</string>
+<string name="customerrequired_kk">Қолданбаға сатып алушы аккаунты қажет. Қызметкер немесе әкімші ретінде кофехананың веб-кабинетін ашыңыз.</string>
+<string name="customerrequired_en">Sign in with a customer account. Staff and administrators should open the cafe web cabinet.</string>
 </resources>
-
-

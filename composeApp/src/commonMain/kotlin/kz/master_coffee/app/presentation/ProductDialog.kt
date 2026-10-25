@@ -17,16 +17,21 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kz.master_coffee.app.domain.*
 import org.jetbrains.compose.resources.painterResource
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProductDialog(product: Product, state: CoffeeState, finish: (CartLine?) -> Unit) {
     val lang = state.language
-    var size by remember(product.id) { mutableStateOf(product.sizes.first()) }
-    var sugar by remember { mutableStateOf(0f) }
-    var type by remember { mutableStateOf("takeaway") }
-    var temperature by remember { mutableStateOf("standard") }
-    var addons by remember { mutableStateOf(setOf<String>()) }
+    var sizeId by rememberSaveable(product.id) { mutableStateOf(product.sizes.first().id) }
+    val size = product.sizes.firstOrNull { it.id == sizeId } ?: product.sizes.first()
+    var sugar by rememberSaveable(product.id) { mutableStateOf(0f) }
+    var type by rememberSaveable(product.id) { mutableStateOf("takeaway") }
+    var temperature by rememberSaveable(product.id) { mutableStateOf("standard") }
+    var addons by rememberSaveable(product.id) { mutableStateOf(listOf<String>()) }
     val catalogAddons = state.catalog?.addons.orEmpty()
     val estimate = size.price + catalogAddons.filter { it.id in addons }.sumOf { it.price }
     Dialog(onDismissRequest = { finish(null) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -36,16 +41,17 @@ fun ProductDialog(product: Product, state: CoffeeState, finish: (CartLine?) -> U
                     Text(catalogText(product.name, lang), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                     IconButton(onClick = { finish(null) }) { Icon(Icons.Outlined.Close, text(Copy.Close, lang)) }
                 }
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp).testTag("customization_list"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     ProductImage(product.imageKey, null, Modifier.fillMaxWidth().height(220.dp))
                     Text(catalogText(product.description, lang), style = MaterialTheme.typography.bodyLarge)
                     Text(text(Copy.Size, lang), style = MaterialTheme.typography.titleMedium)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        product.sizes.forEach { variant -> FilterChip(selected = size.id == variant.id, onClick = { size = variant }, label = { Text("${variant.label} · ${variant.price} ₸") }) }
+                        product.sizes.forEach { variant -> FilterChip(modifier = Modifier.testTag("size_${variant.id}"), selected = size.id == variant.id, onClick = { sizeId = variant.id }, label = { Text("${variant.label} · ${variant.price} ₸") }) }
                     }
                     if (product.isDrink) {
                         Text(text(Copy.Sugar, lang) + ": ${sugar.toInt()}", style = MaterialTheme.typography.titleMedium)
-                        Slider(value = sugar, onValueChange = { sugar = it }, valueRange = 0f..5f, steps = 4)
+                        val sugarLabel = text(Copy.Sugar, lang)
+                        Slider(value = sugar, onValueChange = { sugar = it }, valueRange = 0f..5f, steps = 4, modifier = Modifier.testTag("sugar").semantics { contentDescription = sugarLabel })
                     }
                     ChoiceRow(listOf("takeaway" to Copy.Takeaway, "dine_in" to Copy.DineIn), type, lang) { type = it }
                     if (product.isDrink) Text(text(Copy.AddonHint, lang), style = MaterialTheme.typography.bodySmall)
@@ -65,7 +71,7 @@ fun ProductDialog(product: Product, state: CoffeeState, finish: (CartLine?) -> U
                     if (product.isDrink) ChoiceRow(listOf("standard" to Copy.Standard, "hot" to Copy.Hot, "cool" to Copy.Cool), temperature, lang) { temperature = it }
                     Text(text(Copy.Estimate, lang) + ": $estimate ₸", style = MaterialTheme.typography.bodyMedium)
                 }
-                Button(onClick = { finish(CartLine(product.id, size.id, addonIds = addons.sorted(), sugar = sugar.toInt(), orderType = type, temperature = temperature)) }, modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 52.dp), shape = RoundedCornerShape(16.dp), enabled = state.cafeId != null && !state.pending && !state.busy) { Text(text(Copy.AddToCart, lang)) }
+                Button(onClick = { finish(CartLine(product.id, size.id, addonIds = addons.sorted(), sugar = sugar.toInt(), orderType = type, temperature = temperature)) }, modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 52.dp).testTag("product_add"), shape = RoundedCornerShape(16.dp), enabled = state.cafeId != null && !state.pending && !state.busy) { Text(text(Copy.AddToCart, lang)) }
             }
         }
     }

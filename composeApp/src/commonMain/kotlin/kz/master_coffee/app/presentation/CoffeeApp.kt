@@ -22,17 +22,23 @@ import androidx.compose.ui.unit.dp
 import kz.master_coffee.app.domain.*
 import mastercoffee.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.semantics
+import kz.master_coffee.app.PlatformBackHandler
 
 @Composable
 fun CoffeeApp(state: CoffeeState, model: CoffeeViewModel) {
     val lang = state.language
-    var product by remember { mutableStateOf<Product?>(null) }
-    var changeCafe by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(state.user?.id) { product = null; changeCafe = null }
+    var productId by rememberSaveable(state.user?.id) { mutableStateOf<Int?>(null) }
+    var changeCafe by rememberSaveable(state.user?.id) { mutableStateOf<Int?>(null) }
+    PlatformBackHandler(state.user != null && state.screen != Screen.MENU && productId == null && changeCafe == null) { model.back() }
     Scaffold(
         topBar = {
             Surface(shadowElevation = 2.dp) {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (state.user != null && state.screen != Screen.MENU) IconButton(onClick = { model.back() }, modifier = Modifier.testTag("back")) { Icon(Icons.Outlined.ArrowBack, text(Copy.Back, lang)) }
                     Image(painterResource(Res.drawable.master_logo2), null, Modifier.size(44.dp))
                     Text("MASTER COFFEE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(horizontal = 10.dp))
                     IconButton(onClick = { if (state.user != null) model.refreshAccount(); model.refreshCatalog() }, enabled = !state.busy) { Icon(Icons.Outlined.Refresh, text(Copy.Refresh, lang)) }
@@ -43,7 +49,7 @@ fun CoffeeApp(state: CoffeeState, model: CoffeeViewModel) {
             if (state.user != null) NavigationBar {
                 val tabs = listOf(Screen.MENU to Copy.Menu, Screen.CAFES to Copy.Cafes, Screen.CART to Copy.Cart, Screen.ORDERS to Copy.Orders, Screen.PROFILE to Copy.Profile)
                 tabs.forEach { (screen, label) ->
-                    NavigationBarItem(selected = state.screen == screen, onClick = { model.navigate(screen) }, icon = {
+                    NavigationBarItem(modifier = Modifier.testTag("tab_${screen.name.lowercase()}"), selected = state.screen == screen, onClick = { model.navigate(screen) }, icon = {
                         val icon = when(screen) { Screen.MENU -> Icons.Outlined.LocalCafe; Screen.CAFES -> Icons.Outlined.Storefront; Screen.CART -> Icons.Outlined.ShoppingBag; Screen.ORDERS -> Icons.Outlined.ReceiptLong; Screen.PROFILE -> Icons.Outlined.Person }
                         BadgedBox(badge = { if (screen == Screen.CART && state.cart != null) Badge { Text(state.cart.items.sumOf { it.quantity }.toString()) } }) { Icon(icon, null) }
                     }, label = { Text(text(label, lang), maxLines = 1, overflow = TextOverflow.Ellipsis) })
@@ -59,7 +65,7 @@ fun CoffeeApp(state: CoffeeState, model: CoffeeViewModel) {
                 state.user == null -> AuthScreen(state, model)
                 else -> key(state.user.id) {
                     when (state.screen) {
-                        Screen.MENU -> MenuScreen(state, model) { product = it }
+                        Screen.MENU -> MenuScreen(state, model) { productId = it.id }
                         Screen.CAFES -> CafeScreen(state) { id -> if (state.cart?.items?.isNotEmpty() == true && state.cafeId != id) changeCafe = id else model.selectCafe(id) }
                         Screen.CART -> CartScreen(state, model)
                         Screen.ORDERS -> OrdersScreen(state, model)
@@ -69,7 +75,7 @@ fun CoffeeApp(state: CoffeeState, model: CoffeeViewModel) {
             }
         }
     }
-    product?.let { selected -> ProductDialog(selected, state) { line -> if (line != null) model.add(line); product = null } }
+    state.catalog?.products?.firstOrNull { it.id == productId }?.let { selected -> ProductDialog(selected, state) { line -> if (line != null) model.add(line); productId = null } }
     changeCafe?.let { id -> AlertDialog(onDismissRequest = { changeCafe = null }, title = { Text(text(Copy.SelectCafe, lang)) }, text = { Text(text(Copy.CafeChange, lang)) }, confirmButton = { TextButton(onClick = { model.selectCafe(id); changeCafe = null }) { Text(text(Copy.Continue, lang)) } }, dismissButton = { TextButton(onClick = { changeCafe = null }) { Text(text(Copy.Cancel, lang)) } }) }
 }
 
@@ -79,9 +85,10 @@ private fun ErrorBanner(error: CoffeeFailure, lang: String, dismiss: () -> Unit)
         "auth_validation" -> Copy.AuthValidation
         "invalid_credentials" -> Copy.LoginFailed
         "email_exists", "email_taken", "account_exists" -> Copy.EmailExists
-        else -> when(error.kind) { FailureKind.NETWORK -> Copy.NetworkError; FailureKind.TIMEOUT -> Copy.TimeoutError; FailureKind.UNAUTHORIZED -> Copy.SessionExpired; FailureKind.PRICE_CHANGED -> Copy.PriceChanged; FailureKind.INVALID -> Copy.InvalidError; FailureKind.SERVER -> Copy.ServerError }
+        "customer_required" -> Copy.CustomerRequired
+        else -> when(error.kind) { FailureKind.NETWORK -> Copy.NetworkError; FailureKind.TIMEOUT -> Copy.TimeoutError; FailureKind.UNAUTHORIZED -> Copy.SessionExpired; FailureKind.PRICE_CHANGED -> Copy.PriceChanged; FailureKind.INVALID -> Copy.InvalidError; FailureKind.SERVER -> Copy.ServerError; FailureKind.STORAGE -> Copy.StorageError }
     }
-    Surface(color = MaterialTheme.colorScheme.errorContainer) {
+    Surface(color = MaterialTheme.colorScheme.errorContainer, modifier = Modifier.testTag("error").semantics { liveRegion = LiveRegionMode.Polite }) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(text(copy, lang), Modifier.weight(1f).padding(vertical = 10.dp), style = MaterialTheme.typography.bodyMedium)
             IconButton(onClick = dismiss) { Icon(Icons.Outlined.Close, text(Copy.Close, lang)) }
@@ -101,12 +108,12 @@ private fun AuthScreen(state: CoffeeState, model: CoffeeViewModel) {
         Image(painterResource(Res.drawable.master_logo2), "Master Coffee", Modifier.size(110.dp).align(Alignment.CenterHorizontally))
         Text(text(Copy.Welcome, lang), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         LanguageRow(lang, model::language)
-        if (register) OutlinedTextField(name, { name = it }, label = { Text(text(Copy.Name, lang)) }, singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(email, { email = it }, label = { Text(text(Copy.Email, lang)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), enabled = !state.busy, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(password, { password = it }, label = { Text(text(Copy.Password, lang)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, text(if (visible) Copy.PasswordHide else Copy.PasswordShow, lang)) } }, enabled = !state.busy, modifier = Modifier.fillMaxWidth())
+        if (register) OutlinedTextField(name, { name = it }, label = { Text(text(Copy.Name, lang)) }, singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_name"))
+        OutlinedTextField(email, { email = it }, label = { Text(text(Copy.Email, lang)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_email"))
+        OutlinedTextField(password, { password = it }, label = { Text(text(Copy.Password, lang)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, text(if (visible) Copy.PasswordHide else Copy.PasswordShow, lang)) } }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_password"))
         Text(text(Copy.AuthHint, lang), style = MaterialTheme.typography.bodySmall)
-        Button(onClick = { model.authenticate(email, password, name, register) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(16.dp)) { Text(text(if (register) Copy.Register else Copy.Login, lang)) }
-        TextButton(onClick = { register = !register; password = ""; model.dismissError() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(text(if (register) Copy.SwitchLogin else Copy.SwitchRegister, lang)) }
+        Button(onClick = { model.authenticate(email, password, name, register) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("auth_submit"), shape = RoundedCornerShape(16.dp)) { Text(text(if (register) Copy.Register else Copy.Login, lang)) }
+        TextButton(onClick = { register = !register; password = ""; model.dismissError() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_switch")) { Text(text(if (register) Copy.SwitchLogin else Copy.SwitchRegister, lang)) }
         TextButton(onClick = model::restoreSession, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(text(Copy.SessionRestore, lang)) }
     }
 }
@@ -128,7 +135,7 @@ private fun MenuScreen(state: CoffeeState, model: CoffeeViewModel, select: (Prod
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val columns = if (maxWidth < 350.dp || LocalDensity.current.fontScale > 1.25f) 1 else 2
         val products = catalog?.products.orEmpty().filter { (category == null || category == it.category) && (search.isBlank() || it.name.contains(search, true)) }
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyColumn(Modifier.fillMaxSize().testTag("menu_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary), shape = RoundedCornerShape(24.dp)) {
                     Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -147,7 +154,7 @@ private fun MenuScreen(state: CoffeeState, model: CoffeeViewModel, select: (Prod
                     items(catalog.products.map { it.category }.distinct()) { value -> FilterChip(selected = category == value, onClick = { category = value }, label = { Text(categoryText(value, lang)) }) }
                 }
             }
-            if (catalog == null) item { RetryEmpty(lang, model::refreshCatalog) }
+            if (catalog == null) item { if (state.catalogLoading) CircularProgressIndicator() else RetryEmpty(lang, model::refreshCatalog) }
             else if (products.isEmpty()) item { Text(text(Copy.Empty, lang)) }
             items(products.chunked(columns), key = { row -> row.first().id }) { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -179,7 +186,7 @@ private fun ProductCard(product: Product, lang: String, enabled: Boolean, modifi
             ProductImage(product.imageKey, null, Modifier.fillMaxWidth().height(142.dp))
             Text(catalogText(product.name, lang), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(product.sizes.minOfOrNull { it.price }?.let { "$it ₸" }.orEmpty(), style = MaterialTheme.typography.bodyLarge)
-            Button(onClick = select, enabled = enabled && product.available && product.sizes.isNotEmpty(), modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp), shape = RoundedCornerShape(14.dp)) { Text(text(if (product.available) Copy.AddToCart else Copy.Unavailable, lang), maxLines = 2) }
+            Button(onClick = select, enabled = enabled && product.available && product.sizes.isNotEmpty(), modifier = Modifier.fillMaxWidth().testTag("product_${product.id}"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp), shape = RoundedCornerShape(14.dp)) { Text(text(if (product.available) Copy.AddToCart else Copy.Unavailable, lang), maxLines = 2) }
         }
     }
 }
@@ -187,7 +194,7 @@ private fun ProductCard(product: Product, lang: String, enabled: Boolean, modifi
 @Composable
 private fun CafeScreen(state: CoffeeState, select: (Int) -> Unit) {
     val lang = state.language
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize().testTag("cafe_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text(text(Copy.SelectCafe, lang), style = MaterialTheme.typography.headlineSmall) }
         items(state.catalog?.cafes.orEmpty(), key = { it.id }) { cafe ->
             Card(shape = RoundedCornerShape(22.dp)) {
@@ -197,7 +204,7 @@ private fun CafeScreen(state: CoffeeState, select: (Int) -> Unit) {
                     Text(cafe.address)
                     Text(text(Copy.WorkingHours, lang) + ": " + cafe.hours, style = MaterialTheme.typography.bodySmall)
                     if (cafe.phone.isNotEmpty()) Text(text(Copy.Contact, lang) + ": " + cafe.phone, style = MaterialTheme.typography.bodySmall)
-                    Button(onClick = { select(cafe.id) }, enabled = cafe.active && !state.busy && !state.pending, modifier = Modifier.fillMaxWidth()) { Text(text(if (cafe.active) Copy.Continue else Copy.Unavailable, lang)) }
+                    Button(onClick = { select(cafe.id) }, enabled = cafe.active && !state.busy && !state.pending, modifier = Modifier.fillMaxWidth().testTag("cafe_${cafe.id}")) { Text(text(if (cafe.active) Copy.Continue else Copy.Unavailable, lang)) }
                 }
             }
         }

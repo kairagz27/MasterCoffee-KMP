@@ -63,12 +63,92 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
       - run: chmod +x gradlew
-      - name: Common KMP tests on JVM and Android debug APK
-        run: ./gradlew :composeApp:testDebugUnitTest :composeApp:assembleDebug --console=plain
+      - name: Common tests, Android Lint, debug app and UI test APK
+        run: >-
+          ./gradlew :composeApp:testDebugUnitTest :composeApp:lintDebug
+          :composeApp:assembleDebug :composeApp:assembleDebugAndroidTest
+          --console=plain --max-workers=2
+      - name: Preserve emulator app and test APKs before URL changes
+        run: |
+          mkdir -p artifacts/android-emulator
+          cp composeApp/build/outputs/apk/debug/composeApp-debug.apk artifacts/android-emulator/app.apk
+          cp composeApp/build/outputs/apk/androidTest/debug/composeApp-debug-androidTest.apk artifacts/android-emulator/tests.apk
+      - name: Release HTTPS configuration, Lint and R8 compilation
+        # localhost is a compilation fixture, not a production API or a runtime success claim.
+        run: >-
+          ./gradlew :composeApp:lintRelease :composeApp:assembleRelease
+          -PmasterCoffeeApiUrl=https://localhost/api/v1 --console=plain --max-workers=2
+      - name: Build USB phone debug APK
+        run: |
+          ./gradlew :composeApp:assembleDebug -PmasterCoffeeApiUrl=http://127.0.0.1:8080/api/v1 --console=plain --max-workers=2
+          mkdir -p artifacts/android-phone
+          cp composeApp/build/outputs/apk/debug/composeApp-debug.apk artifacts/android-phone/composeApp-phone-debug.apk
       - uses: actions/upload-artifact@v4
         with:
           name: mastercoffee-android-debug
-          path: composeApp/build/outputs/apk/debug/*.apk
+          path: artifacts/android-phone/*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mastercoffee-android-instrumentation
+          path: artifacts/android-emulator/*.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mastercoffee-android-build-reports
+          path: |
+            composeApp/build/reports/
+            composeApp/build/test-results/
+            composeApp/build/outputs/mapping/release/
+  android-ui:
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/download-artifact@v4
+        with:
+          name: mastercoffee-android-instrumentation
+          path: artifacts/android-emulator
+      - name: Start real local backend on a fresh database
+        run: |
+          cp .env.example .env
+          docker compose up -d --build --wait
+      - name: Enable KVM for the isolated CI emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android 16 Compose UI and live backend order workflow
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          RUN_BACKEND_E2E: 'true'
+          RUN_LAUNCH_SMOKE: 'true'
+          DEMO_PASSWORD: LocalCoffee-2026!
+          ANDROID_API_URL: http://10.0.2.2:8080/api/v1
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          ram-size: 2048M
+          heap-size: 256M
+          disk-size: 2048M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: sh scripts/run-instrumentation.sh artifacts/android-emulator/app.apk artifacts/android-emulator/tests.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mastercoffee-android-ui-evidence
+          path: artifacts/android-ui/
+      - name: Backend logs and stop
+        if: always()
+        run: |
+          docker compose logs --tail=60
+          docker compose down
   compose-e2e:
     runs-on: ubuntu-latest
     steps:

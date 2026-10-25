@@ -10,12 +10,15 @@ import kz.master_coffee.app.data.ApiRepository
 import kz.master_coffee.app.data.createPlatformServices
 import kz.master_coffee.app.presentation.CoffeeViewModel
 import kz.master_coffee.app.presentation.CoffeeApp
+import kz.master_coffee.app.presentation.CoffeeEnvironment
 
 @Composable
 fun App() {
     val model = viewModel {
-        val platform = createPlatformServices()
-        CoffeeViewModel(ApiRepository(platform.engine, platform.apiUrl, platform.allowHttp), platform.tokens, platform.local, apiAddress = if (platform.allowHttp) platform.apiUrl else "")
+        CoffeeViewModel(environment = {
+            val platform = createPlatformServices()
+            CoffeeEnvironment(ApiRepository(platform.engine, platform.apiUrl, platform.allowHttp), platform.tokens, platform.local, apiAddress = if (platform.allowHttp) platform.apiUrl else "")
+        })
     }
     val state by model.state.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_START) { model.setForeground(true) }

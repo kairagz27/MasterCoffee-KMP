@@ -4,6 +4,8 @@ import mastercoffee.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 enum class Copy(val ru: StringResource, val kk: StringResource, val en: StringResource) {
+    CustomerRequired(Res.string.customerrequired_ru, Res.string.customerrequired_kk, Res.string.customerrequired_en),
+    StorageError(Res.string.storageerror_ru, Res.string.storageerror_kk, Res.string.storageerror_en),
     Menu(Res.string.menu_ru, Res.string.menu_kk, Res.string.menu_en),
     Cafes(Res.string.cafes_ru, Res.string.cafes_kk, Res.string.cafes_en),
     Cart(Res.string.cart_ru, Res.string.cart_kk, Res.string.cart_en),
@@ -115,4 +117,3 @@ enum class Copy(val ru: StringResource, val kk: StringResource, val en: StringRe
     SessionRestore(Res.string.sessionrestore_ru, Res.string.sessionrestore_kk, Res.string.sessionrestore_en),
 }
 @Composable fun text(copy: Copy, language: String): String = stringResource(when (language) { "kk" -> copy.kk; "en" -> copy.en; else -> copy.ru })
-

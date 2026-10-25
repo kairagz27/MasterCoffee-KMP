@@ -14,7 +14,89 @@ class CoffeeViewModelTest {
     private val models = mutableListOf<CoffeeViewModel>()
     @BeforeTest fun before() { Dispatchers.setMain(dispatcher) }
     @AfterTest fun after() { models.forEach { it.close() }; Dispatchers.resetMain() }
-    private fun model(repo: FakeRepository = FakeRepository(), tokens: FakeTokens = FakeTokens(), local: MemoryLocal = MemoryLocal()) = CoffeeViewModel(repo, tokens, local, { "durable-key-123" }).also { models += it }
+    private fun model(repo: FakeRepository = FakeRepository(), tokens: FakeTokens = FakeTokens(), local: MemoryLocal = MemoryLocal()) = CoffeeViewModel(repo, tokens, local, { "durable-key-123" }, storageDispatcher = dispatcher).also { models += it }
+
+    @Test fun initializationIsDeferredAndStorageFailureDoesNotCrashCart() = runTest(dispatcher) {
+        val local = MemoryLocal()
+        var loaded = false
+        val vm = CoffeeViewModel(environment = { loaded = true; kz.master_coffee.app.presentation.CoffeeEnvironment(FakeRepository(), FakeTokens("token-a"), local) }, storageDispatcher = dispatcher).also { models += it }
+        assertFalse(loaded)
+        advanceUntilIdle()
+        assertTrue(loaded)
+        vm.selectCafe(1); advanceUntilIdle()
+        local.failCartSaves = true
+        vm.add(CartLine(3, "3-350")); advanceUntilIdle()
+        assertEquals(FailureKind.STORAGE, vm.state.value.error?.kind)
+        assertFalse(vm.state.value.busy)
+        assertNull(vm.state.value.cart)
+        local.failCartSaves = false
+        vm.add(CartLine(3, "3-350")); advanceUntilIdle()
+        assertNotNull(vm.state.value.cart)
+    }
+
+    @Test fun staffSignInNeverPersistsTokenAndRestoredStaffSessionIsErased() = runTest(dispatcher) {
+        val repo = FakeRepository().apply { user = userA.copy(role = "staff") }
+        val tokens = FakeTokens()
+        val vm = model(repo, tokens)
+        advanceUntilIdle()
+        vm.authenticate("staff@coffee.test", "long-password-123", null, false); advanceUntilIdle()
+        assertNull(vm.state.value.user)
+        assertNull(tokens.value)
+        assertEquals(0, tokens.writeCalls)
+        assertEquals("customer_required", vm.state.value.error?.code)
+        assertEquals(1, repo.logoutCalls)
+        val stored = FakeTokens("old-staff-token")
+        val local = MemoryLocal().apply { saveCart("user-a", Cart(1, listOf(CartLine(3, "3-350")))) }
+        val restored = model(repo, stored, local); advanceUntilIdle()
+        assertNull(restored.state.value.user)
+        assertNull(stored.value)
+        assertNull(local.cart("user-a"))
+        assertEquals("customer_required", restored.state.value.error?.code)
+    }
+
+    @Test fun doubleLoginTapAndLateAuthenticationAfterLogoutCannotRestoreAccount() = runTest(dispatcher) {
+        val repo = FakeRepository().apply { loginDelay = 5_000; ignoreLoginCancellation = true }
+        val tokens = FakeTokens()
+        val vm = model(repo, tokens)
+        advanceUntilIdle()
+        vm.authenticate("a@coffee.test", "long-password-123", null, false)
+        vm.authenticate("a@coffee.test", "long-password-123", null, false)
+        runCurrent()
+        assertEquals(1, repo.loginCalls)
+        vm.logout()
+        advanceUntilIdle()
+        assertNull(vm.state.value.user)
+        assertNull(tokens.value)
+        assertFalse(vm.state.value.busy)
+    }
+
+    @Test fun navigationAndCartSurviveNewViewModelAndBackReturnsToMenu() = runTest(dispatcher) {
+        val local = MemoryLocal().apply { saveCart("user-a", Cart(1, listOf(CartLine(3, "3-350")))) }
+        val tokens = FakeTokens("token-a")
+        val first = model(tokens = tokens, local = local)
+        advanceUntilIdle()
+        first.navigate(kz.master_coffee.app.presentation.Screen.PROFILE); advanceUntilIdle()
+        first.close()
+        val restored = model(tokens = tokens, local = local)
+        advanceUntilIdle()
+        assertEquals(kz.master_coffee.app.presentation.Screen.PROFILE, restored.state.value.screen)
+        assertEquals(1, restored.state.value.cafeId)
+        assertNotNull(restored.state.value.cart)
+        assertTrue(restored.back())
+        assertEquals(kz.master_coffee.app.presentation.Screen.MENU, restored.state.value.screen)
+        assertFalse(restored.back())
+    }
+
+    @Test fun processRestorationFetchesSelectedOrderBeyondTheFirstHistoryPage() = runTest(dispatcher) {
+        val older = order.copy(id = "older-order", status = "completed")
+        val repo = FakeRepository().apply { history = listOf(order); fetchedOrder = older }
+        val local = MemoryLocal().apply { saveNavigation("user-a", SavedNavigation("ORDERS", 1, older.id)) }
+        val restored = model(repo, FakeTokens("token-a"), local)
+        advanceUntilIdle()
+        assertEquals(older.id, restored.state.value.activeOrder?.id)
+        assertEquals(kz.master_coffee.app.presentation.Screen.ORDERS, restored.state.value.screen)
+        assertEquals(1, repo.orderReads)
+    }
 
     @Test fun serverQuoteThenConfirmedCreationClearsCart() = runTest(dispatcher) {
         val repo = FakeRepository()
@@ -26,6 +108,7 @@ class CoffeeViewModelTest {
         model.selectCafe(1)
         advanceUntilIdle()
         model.add(CartLine(3, "3-350"))
+        advanceUntilIdle()
         assertNotNull(local.cart("user-a"))
         model.calculate()
         advanceUntilIdle()
@@ -187,28 +270,34 @@ private val line = OrderLine("Капучино", "350 мл", 1, emptyList(), 0, 
 private val order = Order("order-1", "MC-001001", 1, "created", "unpaid", 1251, 39, 3, listOf(line), "", "2026-10-24T10:00:00Z", OrderQr("server-token", "mastercoffee:order:server-token", "2026-10-24T10:30:00Z", false))
 
 private class FakeTokens(var value: String? = null) : SecureTokenStore {
+    var writeCalls = 0
     override fun read() = value
-    override fun write(token: String) { value = token }
+    override fun write(token: String) { writeCalls++; value = token }
     override fun clear() { value = null }
 }
 private class MemoryLocal : LocalStore {
     var failCartRemoval = false
+    var failCartSaves = false
     override var language = "ru"
     override var theme = "system"
     private val catalogs = mutableMapOf<Int?, Catalog>()
     private val carts = mutableMapOf<String, Cart>()
     private val pending = mutableMapOf<String, Pair<String, String>>()
+    private val navigation = mutableMapOf<String, SavedNavigation>()
     override fun catalog(cafeId: Int?) = catalogs[cafeId]
     override fun saveCatalog(cafeId: Int?, catalog: Catalog) { catalogs[cafeId] = catalog }
     override fun cart(userId: String) = carts[userId]
-    override fun saveCart(userId: String, cart: Cart?) { if (cart == null && failCartRemoval) error("disk write failed"); if (cart == null) carts.remove(userId) else carts[userId] = cart }
+    override fun saveCart(userId: String, cart: Cart?) { if (failCartSaves || (cart == null && failCartRemoval)) error("disk write failed"); if (cart == null) carts.remove(userId) else carts[userId] = cart }
     override fun pending(userId: String) = pending[userId]
     override fun savePending(userId: String, quoteId: String, key: String) { pending[userId] = quoteId to key }
     override fun clearPending(userId: String) { pending.remove(userId) }
-    override fun clearAccount(userId: String) { carts.remove(userId); pending.remove(userId) }
+    override fun clearAccount(userId: String) { carts.remove(userId); pending.remove(userId); navigation.remove(userId) }
+    override fun navigation(userId: String) = navigation[userId]
+    override fun saveNavigation(userId: String, navigation: SavedNavigation) { this.navigation[userId] = navigation }
 }
 private class FakeRepository : CoffeeRepository {
     var user = userA
+    var logoutCalls = 0
     var createFailure: CoffeeFailure? = null
     var meFailure: CoffeeFailure? = null
     var catalogFailure: CoffeeFailure? = null
@@ -219,10 +308,17 @@ private class FakeRepository : CoffeeRepository {
     var orderReadDelay = 0L
     var fetchedOrder = order
     val creates = mutableListOf<Pair<String, String>>()
-    override suspend fun login(email: String, password: String) = Session("token-${user.id}", user)
+    var loginCalls = 0
+    var loginDelay = 0L
+    var ignoreLoginCancellation = false
+    override suspend fun login(email: String, password: String): Session {
+        loginCalls++
+        if (ignoreLoginCancellation) withContext(NonCancellable) { delay(loginDelay) } else delay(loginDelay)
+        return Session("token-${user.id}", user)
+    }
     override suspend fun register(email: String, password: String, name: String) = login(email, password)
     override suspend fun me(token: String): User { meFailure?.let { throw it }; return user }
-    override suspend fun logout(token: String) {}
+    override suspend fun logout(token: String) { logoutCalls++ }
     override suspend fun catalog(cafeId: Int?): Catalog { catalogFailure?.let { throw it }; return kz.master_coffee.app.catalog }
     override suspend fun quote(token: String, cart: Cart): Quote { quoteFailure?.let { throw it }; return Quote("quote-1", "2026-10-24T10:05:00Z", listOf(line), 1290, 3, 39, 1251) }
     override suspend fun createOrder(token: String, quoteId: String, idempotencyKey: String): Order { creates += quoteId to idempotencyKey; createFailure?.let { throw it }; return order }

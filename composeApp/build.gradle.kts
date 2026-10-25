@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.net.URI
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -67,12 +68,19 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
             implementation("io.ktor:ktor-client-mock:2.3.9")
         }
+        androidInstrumentedTest.dependencies {
+            implementation(libs.androidx.testExt.junit)
+            implementation("androidx.test:runner:1.7.0")
+            implementation("androidx.compose.ui:ui-test-junit4:1.10.0")
+            implementation("androidx.test:rules:1.7.0")
+        }
     }
 }
 
 android {
     namespace = "kz.master_coffee.app"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+    sourceSets.getByName("debug").manifest.srcFile("src/androidDebug/AndroidManifest.xml")
 
     defaultConfig {
         applicationId = "kz.master_coffee.app"
@@ -80,6 +88,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"${providers.gradleProperty("masterCoffeeApiUrl").getOrElse("http://10.0.2.2:8080/api/v1")}\"")
     }
     packaging {
@@ -92,8 +101,12 @@ android {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             manifestPlaceholders["usesCleartextTraffic"] = "false"
+            val releaseUrl = providers.gradleProperty("masterCoffeeApiUrl").getOrElse("")
+            buildConfigField("String", "API_BASE_URL", "\"${releaseUrl.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         }
     }
     buildFeatures { buildConfig = true }
@@ -105,7 +118,21 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.10.0")
 }
+
+val configuredReleaseApi = providers.gradleProperty("masterCoffeeApiUrl").getOrElse("")
+val validateReleaseApiUrl = tasks.register("validateReleaseApiUrl") {
+    inputs.property("apiUrl", configuredReleaseApi)
+    val checkedUrl = configuredReleaseApi
+    doLast {
+        val uri = runCatching { URI(checkedUrl) }.getOrNull()
+        require(uri?.scheme == "https" && !uri.host.isNullOrBlank() && uri.userInfo == null && uri.fragment == null) {
+            "Release requires -PmasterCoffeeApiUrl=https://YOUR-REAL-API-HOST/api/v1. No production endpoint is bundled."
+        }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" || it.name == "lintRelease" }.configureEach { dependsOn(validateReleaseApiUrl) }
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     minHeapSize = "32m"
