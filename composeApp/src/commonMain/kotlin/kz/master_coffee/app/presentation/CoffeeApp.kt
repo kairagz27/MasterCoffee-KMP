@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -39,7 +40,7 @@ fun CoffeeApp(state: CoffeeState, model: CoffeeViewModel) {
             Surface(shadowElevation = 2.dp) {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (state.user != null && state.screen != Screen.MENU) IconButton(onClick = { model.back() }, modifier = Modifier.testTag("back")) { Icon(Icons.Outlined.ArrowBack, text(Copy.Back, lang)) }
-                    Image(painterResource(Res.drawable.master_logo2), null, Modifier.size(44.dp))
+                    Image(painterResource(Res.drawable.master_logo2), null, Modifier.size(44.dp), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface))
                     Text("MASTER COFFEE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(horizontal = 10.dp))
                     IconButton(onClick = { if (state.user != null) model.refreshAccount(); model.refreshCatalog() }, enabled = !state.busy) { Icon(Icons.Outlined.Refresh, text(Copy.Refresh, lang)) }
                 }
@@ -105,7 +106,7 @@ private fun AuthScreen(state: CoffeeState, model: CoffeeViewModel) {
     var name by rememberSaveable { mutableStateOf("") }
     var visible by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Image(painterResource(Res.drawable.master_logo2), "Master Coffee", Modifier.size(110.dp).align(Alignment.CenterHorizontally))
+        Image(painterResource(Res.drawable.master_logo2), "Master Coffee", Modifier.size(110.dp).align(Alignment.CenterHorizontally), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface))
         Text(text(Copy.Welcome, lang), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         LanguageRow(lang, model::language)
         if (register) OutlinedTextField(name, { name = it }, label = { Text(text(Copy.Name, lang)) }, singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_name"))

@@ -56,7 +56,7 @@ class MobileUiTest {
         login(); cafeAndDrink()
         rule.onNodeWithTag("size_3-450").performScrollTo().performClick()
         rule.onNodeWithTag("sugar").performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(2f) }
-        rule.onNodeWithText("Cherry").performScrollTo().performClick()
+        rule.onNodeWithText("Cherry", substring = true).performScrollTo().performClick()
         rule.activityRule.scenario.recreate()
         rule.onNodeWithTag("size_3-450").assertIsSelected()
         rule.onNodeWithTag("product_add").performClick()

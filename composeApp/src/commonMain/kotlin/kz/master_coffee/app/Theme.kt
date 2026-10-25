@@ -12,7 +12,7 @@ import org.jetbrains.compose.resources.Font
 import mastercoffee.composeapp.generated.resources.*
 
 private val DarkColorScheme = darkColorScheme(
-    primary = MasterTeal,
+    primary = MasterTealLight,
     primaryContainer = Color(0xFF164B50), onPrimaryContainer = Color(0xFFBDEDF0),
     secondary = Color(0xFFA1DCE0), onSecondary = Color(0xFF00363B),
     secondaryContainer = Color(0xFF164B50), onSecondaryContainer = Color(0xFFBDEDF0),
@@ -24,7 +24,7 @@ private val DarkColorScheme = darkColorScheme(
     outline = Color(0xFF879C9E), outlineVariant = Color(0xFF3E5052),
     background = BackgroundDark,
     surface = SurfaceDark,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF00363B),
     onBackground = Color.White,
     onSurface = Color.White
 )

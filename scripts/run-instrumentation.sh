@@ -10,6 +10,12 @@ adb wait-for-device
 adb install -r "$app_apk"
 adb install -r "$test_apk"
 adb logcat -c
+collect_evidence() {
+  adb logcat -d -v threadtime AndroidRuntime:E '*:S' > "$evidence/crashes.txt" || true
+  adb pull /sdcard/Android/data/kz.master_coffee.app/files/verification "$evidence/screens" >/dev/null 2>&1 || true
+}
+# Keep earlier successful screenshots even when a later test fails.
+trap collect_evidence EXIT
 if [ "${RUN_BACKEND_E2E:-false}" = true ]; then
   # CI/local development credentials only. Never point this test at a production API.
   : "${DEMO_PASSWORD:?Set the development staff password}"
@@ -28,7 +34,6 @@ cat "$evidence/instrumentation.txt"
 # am instrument can return a zero shell status when the tests themselves failed.
 if ! grep -Eq 'OK \([1-9][0-9]* tests?\)' "$evidence/instrumentation.txt" ||
   grep -Eq 'FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|Process crashed|shortMsg=' "$evidence/instrumentation.txt"; then
-  adb logcat -d -v threadtime AndroidRuntime:E '*:S' > "$evidence/crashes.txt" || true
   exit 1
 fi
 if [ "${RUN_BACKEND_E2E:-false}" = true ] && ! grep -q 'masterCoffeeLiveOrderComplete=true' "$evidence/instrumentation.txt"; then
@@ -39,6 +44,4 @@ if [ "${RUN_LAUNCH_SMOKE:-false}" = true ] && ! grep -q 'masterCoffeeLaunchCompl
   echo 'The real MainActivity launch scenario did not report completion.' >&2
   exit 1
 fi
-adb logcat -d -v threadtime AndroidRuntime:E '*:S' > "$evidence/crashes.txt" || true
-adb pull /sdcard/Android/data/kz.master_coffee.app/files/verification "$evidence/screens" >/dev/null 2>&1 || true
 echo 'PASS: Android instrumentation completed; this does not certify physical camera or TalkBack behavior.'
