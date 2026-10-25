@@ -1,6 +1,7 @@
 package kz.master_coffee.app.data
 
 import android.content.Context
+import android.app.Application
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -16,7 +17,9 @@ import kotlinx.serialization.encodeToString
 import kz.master_coffee.app.domain.Cart
 
 object AndroidEnvironment {
-    lateinit var context: Context
+    lateinit var application: Application
+        private set
+    fun initialize(context: Context) { application = context.applicationContext as Application }
 }
 
 /** Only AES-GCM ciphertext reaches preferences. The non-exportable key lives in Android Keystore. */
@@ -84,7 +87,7 @@ private class AndroidDurableLocalStore(context: Context, private val delegate: L
 }
 
 actual fun createPlatformServices(): PlatformServices {
-    val context = AndroidEnvironment.context
+    val context = AndroidEnvironment.application
     return PlatformServices(OkHttp.create(), AndroidTokenStore(context), BuildConfig.API_BASE_URL, BuildConfig.DEBUG, AndroidDurableLocalStore(context))
 }
 actual fun newIdempotencyKey(): String = UUID.randomUUID().toString()

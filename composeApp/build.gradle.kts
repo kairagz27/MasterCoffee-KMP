@@ -31,6 +31,8 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation("io.ktor:ktor-client-okhttp:2.3.9")
+            // Ktor's SLF4J 1.7 API needs a matching binding for R8. Do not log client requests.
+            implementation("org.slf4j:slf4j-nop:1.7.36")
         }
         iosMain.dependencies {
             implementation("io.ktor:ktor-client-darwin:2.3.9")

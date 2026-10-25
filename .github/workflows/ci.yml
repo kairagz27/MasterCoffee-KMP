@@ -78,6 +78,7 @@ jobs:
         run: >-
           ./gradlew :composeApp:lintRelease :composeApp:assembleRelease
           -PmasterCoffeeApiUrl=https://localhost/api/v1 --console=plain --max-workers=2
+          -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8"
       - name: Build USB phone debug APK
         run: |
           ./gradlew :composeApp:assembleDebug -PmasterCoffeeApiUrl=http://127.0.0.1:8080/api/v1 --console=plain --max-workers=2
