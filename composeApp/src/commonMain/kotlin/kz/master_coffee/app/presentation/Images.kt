@@ -33,7 +33,7 @@ fun ProductImage(key: String, description: String?, modifier: Modifier, scale: C
         var showingFallback by remember(key) { mutableStateOf(true) }
         coil3.compose.AsyncImage(
             model = key, contentDescription = description, modifier = modifier,
-            contentScale = if (showingFallback) ContentScale.Fit else scale,
+            contentScale = scale,
             error = painterResource(Res.drawable.master_logo2), placeholder = painterResource(Res.drawable.master_logo2),
             onLoading = { showingFallback = true }, onError = { showingFallback = true }, onSuccess = { showingFallback = false },
             colorFilter = if (showingFallback) ColorFilter.tint(MaterialTheme.colorScheme.primary) else null,
