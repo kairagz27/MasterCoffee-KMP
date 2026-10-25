@@ -4,6 +4,7 @@ import android.os.Looper
 import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -43,8 +44,13 @@ class MobileUiTest {
             MobileTestContent.content = {
                 val state by model.state.collectAsState()
                 val density = LocalDensity.current
+                val currentActivity = LocalActivity.current
                 val dark = when (state.theme) { "dark" -> true; "light" -> false; else -> isSystemInDarkTheme() }
-                SideEffect { updateSystemBarAppearance(rule.activity.window, dark) }
+                SideEffect {
+                    if (currentActivity != null && !currentActivity.isDestroyed) {
+                        updateSystemBarAppearance(currentActivity.window, dark)
+                    }
+                }
                 CompositionLocalProvider(LocalDensity provides Density(density.density, testFontScale)) {
                     MasterCoffeeTheme(dark) { CoffeeApp(state, model) }
                 }
