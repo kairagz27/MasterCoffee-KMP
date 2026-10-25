@@ -1,0 +1,12 @@
+diff --git a/composeApp/src/commonMain/kotlin/kz/master_coffee/app/App.kt b/composeApp/src/commonMain/kotlin/kz/master_coffee/app/App.kt
+index 045f4fa..570103b 100644
+--- a/composeApp/src/commonMain/kotlin/kz/master_coffee/app/App.kt
++++ b/composeApp/src/commonMain/kotlin/kz/master_coffee/app/App.kt
+@@ -701,6 +701,7 @@ fun App() {
+                 }
+             }
+ 
++
+             LaunchedEffect(Unit) {
+                 val savedCartJson = settings.getStringOrNull("saved_cart_json")
+                 if (savedCartJson != null) {

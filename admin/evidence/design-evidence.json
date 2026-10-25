@@ -1,0 +1,26 @@
+{
+  "contract": "admin/design-contract.md: staff queue, actual server payment and statuses, existing Master Coffee palette/fonts; native labels/focus; desktop and narrow layouts.",
+  "targetViewports": ["1440x900", "390x844"],
+  "accessibility": {"status":"pass","evidence":"Inspected rendered labels, native buttons/forms and visible hierarchy. Real browser test verifies Tab moves from email to password; primary actions are at least44px. Main light button contrast5.81:1 and dark primary button contrast4.75:1 against white were checked by WCAG luminance formula. No unhandled browser errors. Screen reader and physical camera remain untested."},
+  "responsive": {"status":"pass","evidence":"Inspected queue and menu screenshots at1440x900 and390x844. Browser asserts no horizontal document overflow at both sizes and with root font20px; narrow menus scroll inside bounded list, editor fields wrap without overlap."},
+  "contentStates": {
+    "loading":{"status":"pass","evidence":"Delayed a real queue request600ms; refresh disabled and orders-list aria-busy=true observed; loading screenshot saved before completion."},
+    "empty":{"status":"pass","evidence":"Actual development database had no active staff orders before test created its order; empty queue message observed and captured."},
+    "error":{"status":"pass","evidence":"Reused consumed server QR after completion; backend409 surfaced as QR has already been used, with no local success. Unauthorized customer role shows cabinet access error."},
+    "partial":{"status":"pass","evidence":"Aborted one real queue request; UI retained previous order detail and explicitly marked last data stale. Removed failure and manual refresh recovered."},
+    "success":{"status":"pass","evidence":"Real local API order MC-001004: QR lookup, payment confirmation, accepted/preparing/ready/completed; backend GET verifies completed. Menu save preserves eligibility; hidden story image upload/create/delete all confirmed by API."},
+    "permission":{"status":"pass","evidence":"Staff cannot see admin navigation; customer cabinet login denied; revoking staff session on server then refreshing clears account details and prompts sign-in."}
+  },
+  "renderedEvidence": [
+    {"viewport":"1440x900","artifact":"queue-1440x900.png","observation":"Staff queue and actual server sum, line options, separate payment/status badges and payment action."},
+    {"viewport":"390x844","artifact":"order-390x844.png","observation":"Queue and detail stack, payment/cancel buttons fit width, comment and server totals wrap correctly."},
+    {"viewport":"1440x900","artifact":"menu-1440x900.png","observation":"Catalogue editor including preserved loyalty checkbox and sizes; no stretched empty editor."},
+    {"viewport":"390x844","artifact":"menu-390x844.png","observation":"Bounded catalogue list and full-width editor with wrapped checkbox labels and numeric size row."},
+    {"viewport":"1440x900","artifact":"loading-1440x900.png","observation":"Real request pending with loading feedback."},
+    {"viewport":"1440x900","artifact":"empty-1440x900.png","observation":"Actual empty active queue before order creation."},
+    {"viewport":"1440x900","artifact":"partial-1440x900.png","observation":"Last known order remains visible alongside failed-refresh message."},
+    {"viewport":"390x844","artifact":"completed-390x844.png","observation":"Server-completed order with issuance confirmation and no further lifecycle controls."},
+    {"viewport":"390x844","artifact":"permission-390x844.png","observation":"Customer role denied cabinet entry after old staff account DOM was cleared."}
+  ],
+  "limitations":["Headless isolated Chrome against local development API; no physical phone or camera hardware test.","Docker/nginx serving could not be exercised in this local run; native Node fallback was used."]
+}

@@ -1,0 +1,11 @@
+### Получить меню
+GET http://localhost:8080/api/menu
+
+### Добавить напиток
+POST http://localhost:8080/api/menu
+Content-Type: application/json
+
+{
+  "name": "Latte",
+  "price": 1300
+}

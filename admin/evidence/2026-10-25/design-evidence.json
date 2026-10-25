@@ -1,0 +1,30 @@
+{
+  "contract":"admin/design-contract.md: preserve Master Coffee identity; server-confirmed staff order actions, cursor queue, safe lookup and responsive native forms.",
+  "testedAt":"2026-10-25T04:35:08.236Z",
+  "targetViewports":["1440x900","390x844"],
+  "accessibility":{"status":"pass","evidence":"Real isolated Chrome verifies labeled login Tab order and queue button focus retention after actual background refresh. Inspected desktop/narrow native forms, wrapped controls and44px button targets. Existing light/dark primary contrast5.81:1/4.75:1 unchanged. Screen reader and physical camera remain untested."},
+  "responsive":{"status":"pass","evidence":"Inspected fresh1440x900 and390x844 screenshots for queue, cursor controls, lookup error and menu. Browser asserts no horizontal overflow at both sizes, with20pxrootfont and systemdarktheme."},
+  "contentStates":{
+    "loading":{"status":"pass","evidence":"A delayed real queue request shows aria-busy and disables refresh; slowlookup removes previous payment controls before its actual response."},
+    "empty":{"status":"pass","evidence":"Actual preserved development database had no active orders before test setup; fresh empty queue captured."},
+    "error":{"status":"pass","evidence":"Actual404lookup shows Russian recovery and leaves no old payment button. Consumed serverQR after completion returns409 and explicit Russian explanation."},
+    "partial":{"status":"pass","evidence":"Aborted queue/page requests retain prior data and explicit stale notice; failed cursor transition rolls back page label; removing failure and retrying recovers."},
+    "success":{"status":"pass","evidence":"NewnativeAPI binary with PostgreSQL: MC-001057 manually found, QRbound cash payment, accepted/preparing/ready/completed. Also exercised actual52activeorder SQL pagination;51dedicated testorders cancelled through authorized API. Menu save, image upload and hiddenstory create/delete confirmed."},
+    "permission":{"status":"pass","evidence":"Staff has no adminnavigation; customer cabinet signin denied; server-revoked staffsession clears privateDOM. Unpaid order exposes no preparation/issuance controls. CameraAPI intentionally absent and manualnumberlookup succeeds."}
+  },
+  "renderedEvidence":[
+    {"viewport":"1440x900","artifact":"queue-1440x900.png","observation":"Actual server sum/options and separate cash/preparation controls."},
+    {"viewport":"390x844","artifact":"order-390x844.png","observation":"Narrow order detail, total and cash buttons fit without overflow."},
+    {"viewport":"1440x900","artifact":"queue-pagination-1440x900.png","observation":"Actual second SQLpage shows older activeorder beyond first50."},
+    {"viewport":"390x844","artifact":"queue-pagination-390x844.png","observation":"Narrow cursor controls and page label wrap within queue."},
+    {"viewport":"1440x900","artifact":"lookup-error-1440x900.png","observation":"Failed lookup leaves emptyselection and no prior order payment action."},
+    {"viewport":"1440x900","artifact":"loading-1440x900.png","observation":"Real request pending loading state."},
+    {"viewport":"1440x900","artifact":"empty-1440x900.png","observation":"Actual emptyactivequeue before fixture creation."},
+    {"viewport":"1440x900","artifact":"partial-1440x900.png","observation":"Stale order retained after a failed refresh."},
+    {"viewport":"390x844","artifact":"menu-390x844.png","observation":"Narrow catalogue editor with preserved loyalty eligibility and sizes."},
+    {"viewport":"390x844","artifact":"menu-dark-390x844.png","observation":"Existing systemdarktheme rendered with legible wrapped forms."},
+    {"viewport":"390x844","artifact":"completed-390x844.png","observation":"Server-issued completedorder with no further lifecycle action."},
+    {"viewport":"390x844","artifact":"permission-390x844.png","observation":"Customer denied cabinet access after oldaccountDOM was cleared."}
+  ],
+  "limitations":["Headless isolated Chrome through native Node localhostproxy to actual GoAPI/PostgreSQL; this browser run did not use nginx.","Xiaomi15, physical QRcamera and screenreader were not exercised."]
+}

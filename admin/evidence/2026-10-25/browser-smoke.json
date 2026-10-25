@@ -1,0 +1,34 @@
+{
+  "testedAt": "2026-10-25T04:35:08.236Z",
+  "clientDate": "2026-10-25",
+  "origin": "http://localhost:8081",
+  "orderNumber": "MC-001057",
+  "orderID": "yTtyTRvYp4ka7MtD8TOyUFXsboYdSR1EXWCHjKQBeTA",
+  "initiallyEmpty": true,
+  "viewports": [
+    "1440x900",
+    "390x844"
+  ],
+  "checks": [
+    "real staff/customer/admin login and permissions",
+    "real SQL pagination past50active orders and failure recovery",
+    "failed/slowlookup cannot retain previous payment actions",
+    "manual number entry with unavailable camera API",
+    "QR lookup and payment",
+    "all preparation states and issuance",
+    "used QR rejection",
+    "session expiry and account DOM isolation",
+    "loading aria state",
+    "stale queue after failed request and recovery",
+    "preserved menu loyalty flag",
+    "real story image upload/create/delete",
+    "desktop and narrow overflow including20pxfont",
+    "system dark theme",
+    "keyboard login focus and queue refresh focus retention"
+  ],
+  "limitations": [
+    "camera hardware not exercised; BarcodeDetector intentionally absent for manual fallback test",
+    "browser is headless isolated Chromium; not Xiaomi15 or a physical phone"
+  ],
+  "unhandledErrors": []
+}

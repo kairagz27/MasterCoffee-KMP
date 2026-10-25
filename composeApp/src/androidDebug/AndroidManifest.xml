@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity android:name="kz.master_coffee.app.testing.MobileTestActivity" android:exported="false" />
+    </application>
+</manifest>
