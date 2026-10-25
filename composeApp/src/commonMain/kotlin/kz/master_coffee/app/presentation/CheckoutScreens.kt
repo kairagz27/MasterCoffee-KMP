@@ -25,9 +25,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.ui.semantics.Role
 import mastercoffee.composeapp.generated.resources.Res
 import mastercoffee.composeapp.generated.resources.card_bg
 import org.jetbrains.compose.resources.painterResource
@@ -207,23 +204,6 @@ fun ProfileScreen(state: CoffeeState, model: CoffeeViewModel) {
                         }
                         Text(text(Copy.LoyaltyRules, lang), style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.92f))
                         OutlinedButton(onClick = model::refreshAccount, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White, disabledContentColor = Color.White.copy(alpha = 0.55f)), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.55f))) { Text(text(Copy.Refresh, lang)) }
-                    }
-                }
-            }
-        }
-        item {
-            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)) {
-                Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Text(text(Copy.Language, lang), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); LanguageRow(lang, model::language) }
-            }
-        }
-        item {
-            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)) {
-                Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text(Copy.Theme, lang), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Column(Modifier.selectableGroup()) {
-                        listOf("system" to Copy.System, "light" to Copy.Light, "dark" to Copy.Dark).forEach { (key, label) ->
-                            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected = state.theme == key, role = Role.RadioButton, onClick = { model.theme(key) }), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = state.theme == key, onClick = null); Text(text(label, lang)) }
-                        }
                     }
                 }
             }
