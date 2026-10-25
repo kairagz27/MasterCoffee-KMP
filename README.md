@@ -221,14 +221,16 @@ PowerShell из корня:
 
 ```powershell
 .\scripts\backup.ps1
-.\scripts\restore-check.ps1 -BackupFile .\backups\mastercoffee-YYYYMMDD-HHMMSS.dump -DatabaseName mastercoffee_restore_check
+$taskBackup = Get-ChildItem .\backups -Filter 'mastercoffee-*.dump' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+.\scripts\restore-check.ps1 -BackupFile $taskBackup.FullName -DatabaseName mastercoffee_restore_check
 ```
 
-Linux/macOS:
+Linux; на macOS для shell backup дополнительно нужен `sha256sum` из GNU coreutils:
 
 ```sh
 sh scripts/backup.sh
-sh scripts/restore-check.sh backups/mastercoffee-YYYYMMDD-HHMMSS.dump mastercoffee_restore_check
+task_backup=$(ls -t backups/mastercoffee-*.dump | head -n 1)
+sh scripts/restore-check.sh "$task_backup" mastercoffee_restore_check
 ```
 
 Backup создаёт `pg_dump -Fc`, fingerprint из того же PostgreSQL snapshot и отдельный tar.gz volume изображений с SHA-256. Restore check сравнивает новую БД с сохранённым fingerprint, включая quotes, и проверяет последовательности; изменения live DB после backup не вызывают ложную ошибку. Имя новой БД должно начинаться с `mastercoffee_restore_`; существующая БД не перезаписывается. [Гарантии и ограничения backup](docs/backend.md#резервная-копия-с-зафиксированным-основанием-проверки).
