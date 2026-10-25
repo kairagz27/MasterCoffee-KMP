@@ -48,4 +48,9 @@ if ! grep -q 'masterCoffeeHybridUiComplete=true' "$evidence/instrumentation.txt"
   echo 'The drawer, language/theme and large-text scenario did not report completion.' >&2
   exit 1
 fi
+if [ "${RUN_LAUNCH_SMOKE:-false}" = true ] && [ "${RUN_BACKEND_E2E:-false}" = true ] &&
+  ! grep -q 'masterCoffeeNativeAccountsComplete=true' "$evidence/instrumentation.txt"; then
+  echo 'The real MainActivity account/Keystore isolation scenario did not report completion.' >&2
+  exit 1
+fi
 echo 'PASS: Android instrumentation completed; this does not certify physical camera or TalkBack behavior.'

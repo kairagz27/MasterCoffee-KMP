@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.ktor.client.HttpClient
@@ -52,7 +53,7 @@ class MobileBackendJourneyTest {
         rule.onNodeWithTag("auth_email").performScrollTo().performTextInput(email)
         rule.onNodeWithTag("auth_password").performScrollTo().performTextInput("Android-verification-2026!")
         rule.onNodeWithTag("auth_submit").performScrollTo().performClick()
-        waitReady(vm) { it.user != null }
+        waitReady(vm) { it.user != null && it.catalog != null && !it.catalogLoading }
         capture("01-catalog")
         rule.onNodeWithTag("tab_cafes").performClick()
         rule.onNodeWithTag("cafe_list").performScrollToNode(hasTestTag("cafe_1"))
@@ -111,6 +112,13 @@ class MobileBackendJourneyTest {
     private fun waitReady(vm: CoffeeViewModel, condition: (CoffeeState) -> Boolean) = rule.waitUntil(40_000) { val state = vm.state.value; !state.busy && condition(state) }
     private fun capture(label: String) {
         rule.waitForIdle()
+        val tag = when (label) {
+            "01-catalog" -> "menu_list"
+            "02-customization" -> "customization_list"
+            "07-loyalty" -> "profile_list"
+            else -> "orders_list"
+        }
+        rule.onNodeWithTag(tag).captureToImage().asAndroidBitmap().recycle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("verification"))
         directory.mkdirs()

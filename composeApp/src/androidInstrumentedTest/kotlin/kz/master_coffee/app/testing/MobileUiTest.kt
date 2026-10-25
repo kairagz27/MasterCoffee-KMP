@@ -7,12 +7,15 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import kz.master_coffee.app.MasterCoffeeTheme
+import kz.master_coffee.app.updateSystemBarAppearance
 import kz.master_coffee.app.data.*
 import kz.master_coffee.app.domain.*
 import kz.master_coffee.app.presentation.*
@@ -41,6 +44,7 @@ class MobileUiTest {
                 val state by model.state.collectAsState()
                 val density = LocalDensity.current
                 val dark = when (state.theme) { "dark" -> true; "light" -> false; else -> isSystemInDarkTheme() }
+                SideEffect { updateSystemBarAppearance(rule.activity.window, dark) }
                 CompositionLocalProvider(LocalDensity provides Density(density.density, testFontScale)) {
                     MasterCoffeeTheme(dark) { CoffeeApp(state, model) }
                 }
@@ -140,6 +144,13 @@ class MobileUiTest {
             rule.onNodeWithTag("theme_$theme").performClick()
             rule.waitUntil { model.state.value.theme == theme }
             rule.onNodeWithTag("theme_$theme").assertIsSelected()
+            rule.runOnIdle {
+                val systemDark = rule.activity.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                val expectedLightAppearance = !(theme == "dark" || (theme == "system" && systemDark))
+                val bars = WindowCompat.getInsetsController(rule.activity.window, rule.activity.window.decorView)
+                assertEquals(expectedLightAppearance, bars.isAppearanceLightStatusBars)
+                assertEquals(expectedLightAppearance, bars.isAppearanceLightNavigationBars)
+            }
             captureHybrid("$theme-large-text")
         }
         rule.onNodeWithTag("sheet_close").performClick()
@@ -158,6 +169,8 @@ class MobileUiTest {
 
     private fun captureHybrid(label: String) {
         rule.waitForIdle()
+        // PixelCopy synchronizes with the rendered Compose buffer before taking the full window.
+        rule.onNodeWithTag("theme_sheet").captureToImage().asAndroidBitmap().recycle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("verification"))
         directory.mkdirs()

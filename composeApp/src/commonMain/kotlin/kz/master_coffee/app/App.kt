@@ -13,7 +13,7 @@ import kz.master_coffee.app.presentation.CoffeeApp
 import kz.master_coffee.app.presentation.CoffeeEnvironment
 
 @Composable
-fun App() {
+fun App(onDarkModeChanged: (Boolean) -> Unit = {}) {
     val model = viewModel {
         CoffeeViewModel(environment = {
             val platform = createPlatformServices()
@@ -25,5 +25,6 @@ fun App() {
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { model.setForeground(false) }
     DisposableEffect(model) { onDispose { model.setForeground(false) } }
     val dark = when (state.theme) { "dark" -> true; "light" -> false; else -> isSystemInDarkTheme() }
+    SideEffect { onDarkModeChanged(dark) }
     MasterCoffeeTheme(dark) { CoffeeApp(state, model) }
 }
