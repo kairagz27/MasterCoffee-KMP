@@ -1,0 +1,12 @@
+\set ON_ERROR_STOP on
+BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SELECT pg_export_snapshot() AS backup_snapshot \gset
+\setenv COFFEE_SNAPSHOT :backup_snapshot
+\! pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc --snapshot="$COFFEE_SNAPSHOT" -f "$COFFEE_BACKUP_DIR/database.dump"
+\if :SHELL_ERROR
+  DO $$ BEGIN RAISE EXCEPTION 'pg_dump failed; backup is incomplete'; END $$;
+\endif
+\o :fingerprint_file
+\i :fingerprint_sql
+\o
+COMMIT;

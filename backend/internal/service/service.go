@@ -66,13 +66,14 @@ func (s *Service) Register(ctx context.Context, email, password, name string) (m
 		return models.Session{}, e
 	}
 	u := models.User{ID: Token(), Email: email, Name: name, Role: "customer"}
-	if e = s.Repo.InsertUser(ctx, u, string(hash)); e != nil {
+	v := s.newSession(u)
+	if e = s.Repo.RegisterSession(ctx, u, string(hash), Hash(v.Token), v.ExpiresAt); e != nil {
 		if repository.Unique(e) {
 			return models.Session{}, Fail(409, "account_exists", "Account already exists")
 		}
 		return models.Session{}, e
 	}
-	return s.session(ctx, u)
+	return v, nil
 }
 
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("invalid-account-timing-password"), 12)
@@ -92,13 +93,16 @@ func (s *Service) Login(ctx context.Context, email, password string) (models.Ses
 	return s.session(ctx, u)
 }
 func (s *Service) session(ctx context.Context, u models.User) (models.Session, error) {
+	v := s.newSession(u)
+	e := s.Repo.InsertSession(ctx, Hash(v.Token), u.ID, v.ExpiresAt)
+	return v, e
+}
+func (s *Service) newSession(u models.User) models.Session {
 	ttl := s.SessionTTL
 	if ttl == 0 {
 		ttl = 7 * 24 * time.Hour
 	}
-	v := models.Session{Token: Token(), ExpiresAt: s.now().Add(ttl), User: u}
-	e := s.Repo.InsertSession(ctx, Hash(v.Token), u.ID, v.ExpiresAt)
-	return v, e
+	return models.Session{Token: Token(), ExpiresAt: s.now().Add(ttl), User: u}
 }
 func (s *Service) Authenticate(ctx context.Context, token string) (models.User, error) {
 	if len(token) != 43 {

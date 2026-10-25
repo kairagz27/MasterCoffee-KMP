@@ -166,31 +166,6 @@ func (h *Handler) fail(w http.ResponseWriter, r *http.Request, e error) {
 	}
 	write(w, v.Status, map[string]any{"error": map[string]string{"code": v.Code, "message": v.Message, "request_id": middleware.GetReqID(r.Context())}})
 }
-func decode(w http.ResponseWriter, r *http.Request, v any) error {
-	if !strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "application/json") {
-		return service.Fail(415, "unsupported_media_type", "Use application/json")
-	}
-	r.Body = http.MaxBytesReader(w, r.Body, 64*1024)
-	d := json.NewDecoder(r.Body)
-	var raw json.RawMessage
-	if e := d.Decode(&raw); e != nil {
-		return service.Fail(400, "invalid_json", "Invalid JSON, unknown fields or body larger than 64 KiB")
-	}
-	raw = bytes.TrimSpace(raw)
-	if len(raw) == 0 || raw[0] != '{' {
-		return service.Fail(400, "invalid_json", "JSON object required")
-	}
-	strict := json.NewDecoder(bytes.NewReader(raw))
-	strict.DisallowUnknownFields()
-	if e := strict.Decode(v); e != nil {
-		return service.Fail(400, "invalid_json", "Invalid JSON or unknown fields")
-	}
-	var trailing any
-	if e := d.Decode(&trailing); e != io.EOF {
-		return service.Fail(400, "invalid_json", "Exactly one JSON object required")
-	}
-	return nil
-}
 func (h *Handler) authLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, e := net.SplitHostPort(r.RemoteAddr)
@@ -526,9 +501,24 @@ func (h *Handler) uploadRead(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, service.Fail(404, "not_found", "Image not found"))
 		return
 	}
+	file, err := os.Open(filepath.Join(h.UploadDir, name))
+	if errors.Is(err, os.ErrNotExist) {
+		h.fail(w, r, service.Fail(404, "not_found", "Image not found"))
+		return
+	}
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	defer file.Close()
+	stat, err := file.Stat()
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'")
-	http.ServeFile(w, r, filepath.Join(h.UploadDir, name))
+	http.ServeContent(w, r, name, stat.ModTime(), file)
 }
 
 func requestTimeout(next http.Handler) http.Handler {

@@ -20,6 +20,12 @@ type DB interface {
 }
 type Repository struct{ Pool *pgxpool.Pool }
 
+func (r *Repository) CafeActive(ctx context.Context, id int) (bool, error) {
+	var active bool
+	err := r.Pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM cafes WHERE id=$1 AND active)", id).Scan(&active)
+	return active, err
+}
+
 func (r *Repository) Begin(ctx context.Context) (pgx.Tx, error) {
 	return r.Pool.BeginTx(ctx, pgx.TxOptions{})
 }
@@ -37,6 +43,20 @@ func (r *Repository) Credentials(ctx context.Context, email string) (models.User
 func (r *Repository) InsertUser(ctx context.Context, u models.User, hash string) error {
 	_, err := r.Pool.Exec(ctx, "INSERT INTO users(id,email,name,role,cafe_id,password_hash) VALUES($1,$2,$3,$4,$5,$6)", u.ID, u.Email, u.Name, u.Role, u.CafeID, hash)
 	return err
+}
+func (r *Repository) RegisterSession(ctx context.Context, u models.User, passwordHash, tokenHash string, expiry time.Time) error {
+	tx, err := r.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, "INSERT INTO users(id,email,name,role,password_hash) VALUES($1,$2,$3,'customer',$4)", u.ID, u.Email, u.Name, passwordHash); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, "INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,$3)", tokenHash, u.ID, expiry); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 func (r *Repository) InsertSession(ctx context.Context, hash, user string, expiry time.Time) error {
 	_, err := r.Pool.Exec(ctx, "INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,$3)", hash, user, expiry)

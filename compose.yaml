@@ -30,7 +30,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081}
       UPLOAD_DIR: /data/uploads
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-8080}:8080"
     volumes:
       - uploads:/data/uploads
     depends_on:
@@ -46,7 +46,7 @@ services:
   admin:
     build: ./admin
     ports:
-      - "${ADMIN_PORT:-8081}:80"
+      - "${ADMIN_BIND:-127.0.0.1}:${ADMIN_PORT:-8081}:80"
     depends_on:
       api:
         condition: service_healthy

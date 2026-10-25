@@ -2,6 +2,8 @@ package config
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"strconv"
@@ -31,8 +33,14 @@ func duration(key string, defaultValue int, unit time.Duration) (time.Duration, 
 	return time.Duration(n) * unit, nil
 }
 func Load() (Config, error) {
-	c := Config{Environment: env("APP_ENV", "development"), DatabaseURL: os.Getenv("DATABASE_URL"), Address: env("HTTP_ADDR", ":8080"), UploadDir: env("UPLOAD_DIR", "./uploads"), DemoPassword: os.Getenv("DEMO_PASSWORD"), Origins: strings.Split(env("CORS_ORIGINS", "http://localhost:8081"), ",")}
+	c := Config{Environment: env("APP_ENV", "development"), Address: env("HTTP_ADDR", ":8080"), UploadDir: env("UPLOAD_DIR", "./uploads"), Origins: strings.Split(env("CORS_ORIGINS", "http://localhost:8081"), ",")}
 	var e error
+	if c.DatabaseURL, e = secret("DATABASE_URL"); e != nil {
+		return c, e
+	}
+	if c.DemoPassword, e = secret("DEMO_PASSWORD"); e != nil {
+		return c, e
+	}
 	if c.Environment != "development" && c.Environment != "test" && c.Environment != "production" {
 		return c, errors.New("APP_ENV must be development, test or production")
 	}
@@ -45,6 +53,14 @@ func Load() (Config, error) {
 	}
 	c.SeedDemo = env("SEED_DEMO", "false") == "true"
 	c.AutoMigrate = env("AUTO_MIGRATE", "false") == "true"
+	for i, origin := range c.Origins {
+		origin = strings.TrimSpace(origin)
+		parsed, err := url.Parse(origin)
+		if err != nil || parsed.Host == "" || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Scheme != "http" && parsed.Scheme != "https") || strings.Contains(origin, "*") {
+			return c, errors.New("CORS_ORIGINS requires explicit HTTP(S) origins without paths, credentials or wildcards")
+		}
+		c.Origins[i] = origin
+	}
 	if c.SeedDemo && (c.Environment != "development" || len(c.DemoPassword) < 12 || len(c.DemoPassword) > 72) {
 		return c, errors.New("SEED_DEMO requires APP_ENV=development and DEMO_PASSWORD of 12–72 bytes")
 	}
@@ -69,4 +85,24 @@ func Load() (Config, error) {
 		return c, e
 	}
 	return c, nil
+}
+
+func secret(key string) (string, error) {
+	value, path := os.Getenv(key), os.Getenv(key+"_FILE")
+	if path == "" {
+		return value, nil
+	}
+	if value != "" {
+		return "", fmt.Errorf("configure either %s or %s_FILE, not both", key, key)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("cannot read %s_FILE", key)
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, 8193))
+	if err != nil || len(data) > 8192 {
+		return "", fmt.Errorf("%s_FILE must be readable and at most 8 KiB", key)
+	}
+	return strings.TrimSuffix(strings.TrimSuffix(string(data), "\n"), "\r"), nil
 }

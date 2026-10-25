@@ -7,7 +7,7 @@ import (
 )
 
 func TestStrictBoundedJSON(t *testing.T) {
-	for _, body := range []string{`null`, `[]`, `{"known":"yes","total":1}`, `{"known":"yes"}{}`, `{"known":"` + strings.Repeat("x", 65*1024) + `"}`} {
+	for _, body := range []string{`null`, `[]`, `{"Known":"yes"}`, `{"known":"a","known":"b"}`, `{"known":null}`, `{"known":"yes","total":1}`, `{"known":"yes"}{}`, `{"known":"` + strings.Repeat("x", 65*1024) + `"}`} {
 		t.Run(body[:min(len(body), 32)], func(t *testing.T) {
 			req := httptest.NewRequest("POST", "/", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")

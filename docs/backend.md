@@ -63,4 +63,49 @@ Preparation `created → accepted → preparing → ready → completed`. Each f
 
 `GET /healthz` liveness, `/readyz` DB ping. HTTP header/body/write/idle timeouts5/15/25/60sec, application timeout20sec, SQL statement timeout15sec, pool max15. SIGINT/SIGTERM shutdown waits up to10sec. Docker nonroot process, uploads in `/data/uploads` volume. Persistent tables: `users`, `sessions`, `cafes`, `products`, `product_availability`, `addons`, `stories`, `quotes`, `orders`, `order_items`, `loyalty_ledger`, `order_events`, `schema_migrations`.
 
-Run `go test ./...` and `go vet ./...` from backend. PostgreSQL integration tests require `TEST_DATABASE_URL`, point only to a disposable test database; tests create isolated schemas and drop only their schema. Production migrations should run with a separate DDL credential before API startup; production secret rotation, email verification/reset, staff provisioning, refunds, distributed rate limiting, retention policies and security review remain pilot preparation work.
+Run `go test ./...` and `go vet ./...` from backend. PostgreSQL integration tests require `TEST_DATABASE_URL`, point only to a disposable test database; tests create isolated schemas and drop only their schema. Production migrations should run with a separate DDL credential before API startup; email verification/reset, refunds, distributed rate limiting, retention policies and deployment review remain pilot preparation work.
+
+## Усиление проверки входных данных
+
+JSON использует точные имена полей из OpenAPI. Повторяющиеся ключи, другой регистр, `null` вместо скалярного поля/массива/позиции заказа, неизвестные поля и несколько JSON-значений получают400. Пустые добавки передаются как `"addon_ids":[]`. Это предотвращает превращение `price:null` в нулевую цену и `active:null` в ложное значение. MIME проверяется как `application/json` с допустимыми параметрами; суффиксы вроде `application/json-invalid` не принимаются. Ошибки отсутствующего изображения, panic и deadline имеют JSON-формат; panic payload не записывается в лог. Создание пользователя и его первой сессии выполняется одной транзакцией: ошибка записи сессии не оставляет частично созданный аккаунт.
+
+## Создание сотрудников без SQL и публичного назначения ролей
+
+`cmd/accounts` доступна только оператору с учётными данными БД. HTTP-регистрация создаёт только customer; маршрута для самостоятельной смены роли нет. CLI создаёт новый staff с существующей активной кофейней либо нового admin без привязки. Существующий email вызывает409: команда не повышает привилегии покупателя и не заменяет его пароль.
+
+Пароль передаётся через закрытый файл, а не аргумент командной строки. На Linux установите для файла права0600, на Windows ограничьте доступ ACL текущим оператором. Используйте секрет-хранилище или ввод в редакторе; не вставляйте реальный пароль в shell history. Пример после настройки `DATABASE_URL` или `DATABASE_URL_FILE` и выполнения миграций:
+
+```sh
+cd backend
+go run ./cmd/accounts --email staff@your-owned-domain --name "Сотрудник" --role staff --cafe 1 --password-file /private/path/staff-password
+```
+
+В Docker тот же инструмент входит в образ как `/app/coffee-accounts`. Для admin используйте `--role admin` и не передавайте `--cafe`. Команда выводит профиль без пароля и токена; `email_verified` остаётся false. Создание сотрудника не подтверждает владение его почтой. Ввод/сброс забытых паролей и изменение существующих ролей требуют отдельного административного процесса.
+
+## Локальная сеть и будущий HTTPS
+
+Локальный Compose публикует API и кабинет на loopback: `API_BIND=127.0.0.1`, `ADMIN_BIND=127.0.0.1`. Для Xiaomi через USB используйте `adb reverse`; открывать сеть не требуется. Для явной проверки телефона по LAN задайте `API_BIND=0.0.0.0`, ограничьте Windows Firewall своей доверенной сетью и используйте фактический адрес компьютера. Демонстрационные пароли предназначены для закрытого development-стенда.
+
+`deploy/compose.https.yaml` — отдельная конфигурация будущего развёртывания из двух существующих сервисов: nginx кабинета завершает TLS, Go API доступен только внутри Docker-сети. Не объединяйте её с development `compose.yaml`. Шаблон не содержит PostgreSQL без TLS: нужен настоящий внешний PostgreSQL с серверным сертификатом и CA, которые подходят его DNS-имени.
+
+1. Скопируйте `.env.https.example` в `.env.https.local`; заполните реальный HTTPS origin и абсолютные пути к секретам вне репозитория. Реального production endpoint проект не создаёт.
+2. Подготовьте действительный `fullchain.pem`, соответствующий private key и процесс обновления сертификата. nginx принимает TLS1.2/1.3; публичный HTTP API порт отсутствует.
+3. В `database_url` храните PostgreSQL URL с URL-кодированными реквизитами, фактическим hostname и `sslmode=verify-full&sslrootcert=/run/secrets/database_ca`. Файл `database_ca.pem` должен доверять сертификату БД; hostname сертификата должен совпадать с URL. Обычный локальный контейнер PostgreSQL17 без TLS этому требованию не соответствует.
+4. Для будущего сервера команды ниже выполняются оператором; в этой задаче deployment не выполнялся:
+
+```sh
+docker compose --env-file .env.https.local -f deploy/compose.https.yaml build
+docker compose --env-file .env.https.local -f deploy/compose.https.yaml run --rm --no-deps api /app/coffee-migrate
+docker compose --env-file .env.https.local -f deploy/compose.https.yaml run --rm --no-deps -v /private/path/staff-password:/run/secrets/new_password:ro api /app/coffee-accounts --email staff@your-owned-domain --name "Сотрудник" --role staff --cafe 1 --password-file /run/secrets/new_password
+docker compose --env-file .env.https.local -f deploy/compose.https.yaml up -d --wait
+```
+
+`DATABASE_URL_FILE` и `DEMO_PASSWORD_FILE` читают максимум8КиБ, удаляя только завершающий перевод строки. Одновременные `KEY` и `KEY_FILE` запрещены, чтобы не использовать неожиданный секрет. `SEED_DEMO=false`, `AUTO_MIGRATE=false` и production-проверка verify-full обязательны. Файлы секретов, TLS private keys и резервные копии нельзя коммитить. API намеренно не доверяет произвольному `X-Forwarded-For`; auth limiter за nginx разделяется между его клиентами, что допустимо для малочисленного пилота, но требует отдельного решения перед публичным запуском.
+
+## Резервная копия с зафиксированным основанием проверки
+
+`scripts/backup.sh` и `scripts/backup.ps1` экспортируют PostgreSQL snapshot в read-only repeatable-read транзакции. `pg_dump --snapshot` и fingerprint читают один снимок. Рядом с `.dump` сохраняется `.dump.fingerprint`, включающий пользователей, сессии, quotes, заказы/позиции, ledger/events, каталог и миграции. Проверка восстановления сравнивает отдельную БД с этим сохранённым основанием; новая активность живой БД после backup не вызывает ложного несовпадения. Такой механизм соответствует [PostgreSQL synchronized snapshot](https://www.postgresql.org/docs/current/app-pgdump.html).
+
+Uploads неизменяемы через API; архив создаётся после DB snapshot и может содержать дополнительные ещё не использовавшиеся изображения. Архив получает SHA-256 sidecar. Храните dump, baseline и архив вместе с ограниченным доступом; shell backup устанавливает umask077. Резервные копии содержат персональные данные и хеши, даже если действующие session tokens не сохраняются открыто.
+
+`restore-check.sh`/`.ps1` требуют новую БД с префиксом `mastercoffee_restore_`, отказываются перезаписывать существующую и не меняют live DB. После восстановления проверяются fingerprint и следующие значения order/identity sequences, чтобы новая запись не столкнулась с существующим ID. Для старых dump без baseline автоматическая проверка прекращается явно. Восстановление изображений выполняйте в новую директорию с проверкой SHA-256 и содержимого архива; затем проверьте ссылки stories/изображений и загрузку файлов через API перед переключением volume.

@@ -286,7 +286,7 @@ func TestPostgresConcurrentCreationAwardAndQuoteChanges(t *testing.T) {
 	h.ok("PUT", "/api/v1/admin/products/3", admin.Token, p, 200, "")
 	h.ok("POST", "/api/v1/orders", customer.Token, map[string]string{"quote_id": stale.ID}, 409, "stale-price-key01")
 	h.ok("PATCH", "/api/v1/admin/cafes/1/products/3", admin.Token, map[string]bool{"available": false}, 200, "")
-	h.ok("POST", "/api/v1/orders/quote", customer.Token, models.QuoteInput{CafeID: 1, Items: []models.ItemInput{{ProductID: 3, SizeID: "3-350", Quantity: 1, OrderType: "takeaway", Temperature: "standard"}}}, 409, "")
+	h.ok("POST", "/api/v1/orders/quote", customer.Token, models.QuoteInput{CafeID: 1, Items: []models.ItemInput{{ProductID: 3, SizeID: "3-350", Quantity: 1, AddonIDs: []string{}, OrderType: "takeaway", Temperature: "standard"}}}, 409, "")
 	h.ok("PATCH", "/api/v1/admin/cafes/1/products/3", admin.Token, map[string]bool{"available": true}, 200, "")
 	exp := h.quote(customer.Token, 1, 3)
 	_, e := h.pool.Exec(context.Background(), "UPDATE quotes SET expires_at='2000-01-01T00:00:00Z' WHERE id=$1", exp.ID)
@@ -443,5 +443,79 @@ func TestPostgresLegacyMigrationAndPagination(t *testing.T) {
 	}
 	if e := migrations.Apply(ctx, h.pool); e == nil {
 		t.Fatal("corrupted applied migration checksum accepted")
+	}
+}
+
+func TestPostgresOperatorProvisioningAndExactJSON(t *testing.T) {
+	h := setup(t)
+	customer := h.login("customer")
+	admin := h.login("admin")
+	ctx := context.Background()
+	// A failed session insert must not leave a registered account behind.
+	failedUser := models.User{ID: service.Token(), Email: "atomic-register@example.test", Name: "Atomic", Role: "customer"}
+	err := h.svc.Repo.RegisterSession(ctx, failedUser, "unused-test-hash", service.Hash(customer.Token), time.Now().Add(time.Hour))
+	if err == nil {
+		t.Fatal("expected duplicate session constraint failure")
+	}
+	var accountCount int
+	if err = h.pool.QueryRow(ctx, "SELECT count(*) FROM users WHERE id=$1", failedUser.ID).Scan(&accountCount); err != nil || accountCount != 0 {
+		t.Fatal("partial registration persisted", accountCount, err)
+	}
+	staffUser, err := h.svc.ProvisionOperator(ctx, service.OperatorInput{Email: "cafe2@example.test", Name: "Кофейня 2", Role: "staff", CafeID: 2}, "operator-password-123")
+	if err != nil || staffUser.CafeID == nil || *staffUser.CafeID != 2 || staffUser.EmailVerified {
+		t.Fatal("staff provisioning", staffUser, err)
+	}
+	staff := parse[models.Session](t, h.ok("POST", "/api/v1/auth/login", "", map[string]string{"email": staffUser.Email, "password": "operator-password-123"}, 200, ""))
+	quote := h.quote(customer.Token, 1, 3)
+	order := h.order(customer.Token, quote.ID, "provision-check-key")
+	h.ok("GET", "/api/v1/staff/orders/"+order.ID, staff.Token, nil, 403, "")
+	h.ok("POST", "/api/v1/staff/orders/"+order.ID+"/payment", staff.Token, map[string]any{}, 403, "")
+	for _, input := range []service.OperatorInput{{Email: customer.User.Email, Name: "Escalation", Role: "admin"}, {Email: "missing@example.test", Name: "Missing", Role: "staff", CafeID: 999}, {Email: "invalid@example.test", Name: "Invalid", Role: "customer"}} {
+		if _, err = h.svc.ProvisionOperator(ctx, input, "operator-password-123"); err == nil {
+			t.Fatal("invalid or existing account provisioned", input.Role)
+		}
+	}
+	unchanged := parse[models.User](t, h.ok("GET", "/api/v1/auth/me", customer.Token, nil, 200, ""))
+	if unchanged.Role != "customer" {
+		t.Fatal("customer silently promoted")
+	}
+	newAdmin, err := h.svc.ProvisionOperator(ctx, service.OperatorInput{Email: "operator-admin@example.test", Name: "Admin", Role: "admin"}, "operator-password-123")
+	if err != nil || newAdmin.Role != "admin" || newAdmin.CafeID != nil {
+		t.Fatal("admin provisioning", err)
+	}
+	for _, test := range []struct{ path, body, token string }{
+		{"/api/v1/orders/quote", `{"CAFE_ID":1,"items":[]}`, customer.Token},
+		{"/api/v1/orders/quote", `{"cafe_id":1,"cafe_id":2,"items":[]}`, customer.Token},
+		{"/api/v1/orders/quote", `{"cafe_id":1,"items":[null]}`, customer.Token},
+		{"/api/v1/orders/quote", `{"cafe_id":1,"items":[{"product_id":3,"size_id":"3-350","quantity":1,"addon_ids":null,"sugar":0,"order_type":"takeaway","temperature":"standard"}]}`, customer.Token},
+		{"/api/v1/admin/products/3", `{"id":3,"name":"Кофе","category":"Кофе","description":"","image_key":"cappuccino","is_drink":true,"loyalty_eligible":true,"sizes":[{"id":"3-350","label":"350 мл","price":null}]}`, admin.Token},
+	} {
+		method := "POST"
+		if strings.Contains(test.path, "admin/products") {
+			method = "PUT"
+		}
+		req, e := http.NewRequest(method, h.server.URL+test.path, strings.NewReader(test.body))
+		if e != nil {
+			t.Fatal(e)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+test.token)
+		res, e := http.DefaultClient.Do(req)
+		if e != nil {
+			t.Fatal(e)
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != 400 {
+			t.Fatalf("invalid JSON accepted: %d %s", res.StatusCode, body)
+		}
+	}
+	status, body := h.request("GET", "/uploads/"+strings.Repeat("a", 43)+".png", "", nil, "")
+	if status != 404 {
+		t.Fatal("missing image", status)
+	}
+	var jsonError map[string]any
+	if err = json.Unmarshal(body, &jsonError); err != nil || jsonError["error"] == nil {
+		t.Fatal("image error is not JSON", string(body))
 	}
 }

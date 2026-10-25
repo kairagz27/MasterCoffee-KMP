@@ -2,6 +2,7 @@ SET timezone = 'UTC';
 SELECT md5(jsonb_build_object(
   'users', (SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY id),'[]'::jsonb) FROM users t),
   'sessions', (SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY token_hash),'[]'::jsonb) FROM sessions t),
+  'quotes', (SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY id),'[]'::jsonb) FROM quotes t),
   'orders', (SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY sequence),'[]'::jsonb) FROM orders t),
   'items', (SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY order_id,position),'[]'::jsonb) FROM order_items t),
   'ledger', (SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY id),'[]'::jsonb) FROM loyalty_ledger t),
