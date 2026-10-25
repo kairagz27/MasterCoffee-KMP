@@ -4,7 +4,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.Shapes
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -41,11 +44,15 @@ fun MasterCoffeeTheme(dark: Boolean = true, content: @Composable () -> Unit) {
             secondaryContainer = Color(0xFFD0ECEE), onSecondaryContainer = Color(0xFF103F44),
             tertiary = Color(0xFF25656C), onTertiary = Color.White,
             tertiaryContainer = Color(0xFFD0ECEE), onTertiaryContainer = Color(0xFF103F44),
-            background = Color(0xFFF8F9FA), surface = Color.White,
+            background = Color(0xFFF4F6F6), surface = Color.White,
             surfaceVariant = Color(0xFFE1ECEC), onSurfaceVariant = Color(0xFF3F4D4F),
             surfaceContainer = Color(0xFFEDF3F3), surfaceContainerLow = Color(0xFFF2F7F7),
             surfaceContainerHigh = Color(0xFFE5EEEE), surfaceContainerHighest = Color(0xFFDDE8E8),
             outline = Color(0xFF6F7F80), outlineVariant = Color(0xFFBFCFD0)
+        ),
+        shapes = Shapes(
+            extraSmall = RoundedCornerShape(8.dp), small = RoundedCornerShape(12.dp),
+            medium = RoundedCornerShape(20.dp), large = RoundedCornerShape(26.dp), extraLarge = RoundedCornerShape(32.dp),
         ),
         typography = Typography(
             displayLarge = base.displayLarge.copy(fontFamily = family), displayMedium = base.displayMedium.copy(fontFamily = family), displaySmall = base.displaySmall.copy(fontFamily = family),

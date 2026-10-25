@@ -44,4 +44,8 @@ if [ "${RUN_LAUNCH_SMOKE:-false}" = true ] && ! grep -q 'masterCoffeeLaunchCompl
   echo 'The real MainActivity launch scenario did not report completion.' >&2
   exit 1
 fi
+if ! grep -q 'masterCoffeeHybridUiComplete=true' "$evidence/instrumentation.txt"; then
+  echo 'The drawer, language/theme and large-text scenario did not report completion.' >&2
+  exit 1
+fi
 echo 'PASS: Android instrumentation completed; this does not certify physical camera or TalkBack behavior.'

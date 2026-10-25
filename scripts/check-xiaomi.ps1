@@ -52,7 +52,7 @@ try {
             'kz.master_coffee.app.test/androidx.test.runner.AndroidJUnitRunner')
         $testText = $testOutput -join "`n"
         $testText | Set-Content -LiteralPath (Join-Path $evidencePath 'instrumentation.txt') -Encoding utf8
-        if ($testText -notmatch 'OK \([1-9]\d* tests?\)' -or $testText -notmatch 'masterCoffeeLiveOrderComplete=true' -or $testText -match 'FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|Process crashed|shortMsg=') {
+        if ($testText -notmatch 'OK \([1-9]\d* tests?\)' -or $testText -notmatch 'masterCoffeeLiveOrderComplete=true' -or $testText -notmatch 'masterCoffeeHybridUiComplete=true' -or $testText -match 'FAILURES!!!|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|Process crashed|shortMsg=') {
             throw "Instrumentation failed; see $evidencePath"
         }
         Write-Output 'PASS: managed Android UI tests and live backend workflow.'

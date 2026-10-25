@@ -3,6 +3,7 @@ package kz.master_coffee.app.presentation
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -12,8 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -21,44 +20,18 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kz.master_coffee.app.domain.*
-import mastercoffee.composeapp.generated.resources.*
-import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
-import kz.master_coffee.app.PlatformBackHandler
 
 @Composable
 fun CoffeeApp(state: CoffeeState, model: CoffeeViewModel) {
     val lang = state.language
     var productId by rememberSaveable(state.user?.id) { mutableStateOf<Int?>(null) }
     var changeCafe by rememberSaveable(state.user?.id) { mutableStateOf<Int?>(null) }
-    PlatformBackHandler(state.user != null && state.screen != Screen.MENU && productId == null && changeCafe == null) { model.back() }
-    Scaffold(
-        topBar = {
-            Surface(shadowElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (state.user != null && state.screen != Screen.MENU) IconButton(onClick = { model.back() }, modifier = Modifier.testTag("back")) { Icon(Icons.Outlined.ArrowBack, text(Copy.Back, lang)) }
-                    Image(painterResource(Res.drawable.master_logo2), null, Modifier.size(44.dp), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface))
-                    Text("MASTER COFFEE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).padding(horizontal = 10.dp))
-                    IconButton(onClick = { if (state.user != null) model.refreshAccount(); model.refreshCatalog() }, enabled = !state.busy) { Icon(Icons.Outlined.Refresh, text(Copy.Refresh, lang)) }
-                }
-            }
-        },
-        bottomBar = {
-            if (state.user != null) NavigationBar {
-                val tabs = listOf(Screen.MENU to Copy.Menu, Screen.CAFES to Copy.Cafes, Screen.CART to Copy.Cart, Screen.ORDERS to Copy.Orders, Screen.PROFILE to Copy.Profile)
-                tabs.forEach { (screen, label) ->
-                    NavigationBarItem(modifier = Modifier.testTag("tab_${screen.name.lowercase()}"), selected = state.screen == screen, onClick = { model.navigate(screen) }, icon = {
-                        val icon = when(screen) { Screen.MENU -> Icons.Outlined.LocalCafe; Screen.CAFES -> Icons.Outlined.Storefront; Screen.CART -> Icons.Outlined.ShoppingBag; Screen.ORDERS -> Icons.Outlined.ReceiptLong; Screen.PROFILE -> Icons.Outlined.Person }
-                        BadgedBox(badge = { if (screen == Screen.CART && state.cart != null) Badge { Text(state.cart.items.sumOf { it.quantity }.toString()) } }) { Icon(icon, null) }
-                    }, label = { Text(text(label, lang), maxLines = 1, overflow = TextOverflow.Ellipsis) })
-                }
-            }
-        }
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
+    CoffeeShell(state, model, screenBackEnabled = productId == null && changeCafe == null) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
             if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error?.let { ErrorBanner(it, lang, model::dismissError) }
             when {
@@ -105,17 +78,25 @@ private fun AuthScreen(state: CoffeeState, model: CoffeeViewModel) {
     var password by remember { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
     var visible by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Image(painterResource(Res.drawable.master_logo2), "Master Coffee", Modifier.size(110.dp).align(Alignment.CenterHorizontally), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface))
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        BrandMark(Modifier.size(96.dp).align(Alignment.CenterHorizontally), "Master Coffee")
         Text(text(Copy.Welcome, lang), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        LanguageRow(lang, model::language)
-        if (register) OutlinedTextField(name, { name = it }, label = { Text(text(Copy.Name, lang)) }, singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_name"))
-        OutlinedTextField(email, { email = it }, label = { Text(text(Copy.Email, lang)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_email"))
-        OutlinedTextField(password, { password = it }, label = { Text(text(Copy.Password, lang)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, text(if (visible) Copy.PasswordHide else Copy.PasswordShow, lang)) } }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_password"))
-        Text(text(Copy.AuthHint, lang), style = MaterialTheme.typography.bodySmall)
-        Button(onClick = { model.authenticate(email, password, name, register) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("auth_submit"), shape = RoundedCornerShape(16.dp)) { Text(text(if (register) Copy.Register else Copy.Login, lang)) }
-        TextButton(onClick = { register = !register; password = ""; model.dismissError() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_switch")) { Text(text(if (register) Copy.SwitchLogin else Copy.SwitchRegister, lang)) }
-        TextButton(onClick = model::restoreSession, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(text(Copy.SessionRestore, lang)) }
+        Card(
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                LanguageRow(lang, model::language)
+                if (register) OutlinedTextField(name, { name = it }, label = { Text(text(Copy.Name, lang)) }, singleLine = true, enabled = !state.busy, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().testTag("auth_name"))
+                OutlinedTextField(email, { email = it }, label = { Text(text(Copy.Email, lang)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), enabled = !state.busy, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().testTag("auth_email"))
+                OutlinedTextField(password, { password = it }, label = { Text(text(Copy.Password, lang)) }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), trailingIcon = { IconButton(onClick = { visible = !visible }) { Icon(if (visible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, text(if (visible) Copy.PasswordHide else Copy.PasswordShow, lang)) } }, enabled = !state.busy, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().testTag("auth_password"))
+                Text(text(Copy.AuthHint, lang), style = MaterialTheme.typography.bodySmall)
+                Button(onClick = { model.authenticate(email, password, name, register) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("auth_submit"), shape = RoundedCornerShape(16.dp)) { Text(text(if (register) Copy.Register else Copy.Login, lang)) }
+                TextButton(onClick = { register = !register; password = ""; model.dismissError() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("auth_switch")) { Text(text(if (register) Copy.SwitchLogin else Copy.SwitchRegister, lang)) }
+                TextButton(onClick = model::restoreSession, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(text(Copy.SessionRestore, lang)) }
+            }
+        }
     }
 }
 
@@ -138,17 +119,57 @@ private fun MenuScreen(state: CoffeeState, model: CoffeeViewModel, select: (Prod
         val products = catalog?.products.orEmpty().filter { (category == null || category == it.category) && (search.isBlank() || it.name.contains(search, true)) }
         LazyColumn(Modifier.fillMaxSize().testTag("menu_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary), shape = RoundedCornerShape(24.dp)) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                    shape = RoundedCornerShape(26.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
                     Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(text(Copy.Welcome, lang), color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Text(state.user?.name.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleMedium)
-                        Button(onClick = { model.navigate(Screen.CAFES) }, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.primary)) { Text(cafe?.address ?: text(Copy.SelectCafe, lang)) }
+                        Text(text(Copy.Welcome, lang), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text(state.user?.name.orEmpty(), style = MaterialTheme.typography.titleMedium)
+                        state.loyalty?.let { loyalty ->
+                            HorizontalDivider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .2f))
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(text(Copy.Loyalty, lang), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text(text(Copy.Receipts, lang) + ": " + loyalty.qualifyingOrders, style = MaterialTheme.typography.bodySmall)
+                                }
+                                Text("${loyalty.discountPercent}%", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                Card(
+                    onClick = { model.navigate(Screen.CAFES) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(text(Copy.SelectCafe, lang), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(cafe?.address ?: text(Copy.Cafes, lang), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        }
+                        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+            if (catalog?.stories?.isNotEmpty() == true) {
+                item { Text(text(Copy.Stories, lang), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
+                        items(catalog.stories, key = { it.id }) { story -> StoryCard(story, lang) }
                     }
                 }
             }
             if (state.cached) item { Text(text(Copy.Offline, lang), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             item { Text(text(Copy.AvailabilityHint, lang), style = MaterialTheme.typography.bodySmall) }
-            item { OutlinedTextField(search, { search = it }, label = { Text(text(Copy.Search, lang)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
+            item { OutlinedTextField(search, { search = it }, label = { Text(text(Copy.Search, lang)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), singleLine = true) }
             if (catalog != null) item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     item { FilterChip(selected = category == null, onClick = { category = null }, label = { Text(text(Copy.Menu, lang)) }) }
@@ -162,10 +183,6 @@ private fun MenuScreen(state: CoffeeState, model: CoffeeViewModel, select: (Prod
                     row.forEach { product -> ProductCard(product, lang, state.cafeId != null && !state.pending && !state.busy, Modifier.weight(1f)) { select(product) } }
                     if (row.size < columns) Spacer(Modifier.weight(1f))
                 }
-            }
-            if (catalog?.stories?.isNotEmpty() == true) {
-                item { Text(text(Copy.Stories, lang), style = MaterialTheme.typography.titleLarge) }
-                items(catalog.stories, key = { it.id }) { story -> StoryCard(story, lang) }
             }
         }
     }
@@ -182,11 +199,16 @@ private fun categoryText(value: String, language: String) = when(value.lowercase
 
 @Composable
 private fun ProductCard(product: Product, lang: String, enabled: Boolean, modifier: Modifier, select: () -> Unit) {
-    Card(modifier = modifier, shape = RoundedCornerShape(22.dp)) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+    ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ProductImage(product.imageKey, null, Modifier.fillMaxWidth().height(142.dp))
             Text(catalogText(product.name, lang), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(product.sizes.minOfOrNull { it.price }?.let { "$it ₸" }.orEmpty(), style = MaterialTheme.typography.bodyLarge)
+            Text(product.sizes.minOfOrNull { it.price }?.let { "$it ₸" }.orEmpty(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Button(onClick = select, enabled = enabled && product.available && product.sizes.isNotEmpty(), modifier = Modifier.fillMaxWidth().testTag("product_${product.id}"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp), shape = RoundedCornerShape(14.dp)) { Text(text(if (product.available) Copy.AddToCart else Copy.Unavailable, lang), maxLines = 2) }
         }
     }
@@ -198,8 +220,12 @@ private fun CafeScreen(state: CoffeeState, select: (Int) -> Unit) {
     LazyColumn(Modifier.fillMaxSize().testTag("cafe_list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text(text(Copy.SelectCafe, lang), style = MaterialTheme.typography.headlineSmall) }
         items(state.catalog?.cafes.orEmpty(), key = { it.id }) { cafe ->
-            Card(shape = RoundedCornerShape(22.dp)) {
-                Image(painterResource(coffeeImage(cafe.imageKey)), null, Modifier.fillMaxWidth().height(170.dp), contentScale = ContentScale.Crop)
+            Card(
+                shape = RoundedCornerShape(26.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                ProductImage(cafe.imageKey, null, Modifier.fillMaxWidth().height(170.dp), ContentScale.Crop)
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(cafe.name, style = MaterialTheme.typography.titleLarge)
                     Text(cafe.address)
@@ -220,9 +246,15 @@ private fun RetryEmpty(lang: String, retry: () -> Unit) {
 
 @Composable
 private fun StoryCard(story: Story, lang: String) {
-    Card(shape = RoundedCornerShape(18.dp)) {
-        if (story.imageUrl.startsWith("resource:")) Image(painterResource(coffeeImage(story.imageUrl.removePrefix("resource:"))), null, Modifier.fillMaxWidth().height(190.dp), contentScale = ContentScale.Crop)
-        else coil3.compose.AsyncImage(model = story.imageUrl, contentDescription = story.title, modifier = Modifier.fillMaxWidth().height(190.dp), contentScale = ContentScale.Crop)
-        Text(catalogText(story.title, lang), Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium)
+    Column(Modifier.width(96.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Card(
+            modifier = Modifier.width(90.dp).height(110.dp).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp)),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            ProductImage(story.imageUrl.removePrefix("resource:"), null, Modifier.fillMaxSize(), ContentScale.Crop)
+        }
+        Text(catalogText(story.title, lang), style = MaterialTheme.typography.labelMedium, maxLines = 3, overflow = TextOverflow.Ellipsis)
     }
 }

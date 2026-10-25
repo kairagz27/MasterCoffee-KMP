@@ -1,7 +1,12 @@
 package kz.master_coffee.app.testing
 
 import android.os.Looper
+import android.graphics.Bitmap
+import android.os.Bundle
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -17,6 +22,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class MobileUiTest {
@@ -25,12 +31,20 @@ class MobileUiTest {
     private lateinit var repository: ManagedRepository
     private lateinit var tokens: ManagedTokens
     private lateinit var local: ManagedLocal
+    private var testFontScale by mutableStateOf(1f)
 
     @Before fun prepare() {
         repository = ManagedRepository(); tokens = ManagedTokens(); local = ManagedLocal()
         rule.runOnUiThread {
             model = CoffeeViewModel(repository, tokens, local)
-            MobileTestContent.content = { val state by model.state.collectAsState(); MasterCoffeeTheme(false) { CoffeeApp(state, model) } }
+            MobileTestContent.content = {
+                val state by model.state.collectAsState()
+                val density = LocalDensity.current
+                val dark = when (state.theme) { "dark" -> true; "light" -> false; else -> isSystemInDarkTheme() }
+                CompositionLocalProvider(LocalDensity provides Density(density.density, testFontScale)) {
+                    MasterCoffeeTheme(dark) { CoffeeApp(state, model) }
+                }
+            }
         }
         ready()
     }
@@ -104,6 +118,54 @@ class MobileUiTest {
         rule.onNodeWithTag("cart_list").performScrollToNode(hasTestTag("cart_confirm"))
         rule.onNodeWithTag("cart_confirm").assertIsEnabled()
         assertEquals(0, repository.createCalls)
+    }
+
+    @Test fun hybridDrawerLanguagesThemesAndLargeTextStayUsable() {
+        login()
+        rule.runOnUiThread { testFontScale = 1.35f }
+        for ((language, ordersLabel) in listOf("ru" to "Заказы", "kk" to "Тапсырыстар", "en" to "Orders")) {
+            rule.onNodeWithTag("drawer_open").performClick()
+            rule.onNodeWithTag("drawer_language").performScrollTo().performClick()
+            rule.onNodeWithTag("language_$language").performClick()
+            rule.waitUntil { model.state.value.language == language }
+            rule.onNodeWithTag("language_$language").assertIsSelected()
+            rule.onNodeWithTag("sheet_close").performClick()
+            rule.onNodeWithTag("drawer_open").performClick()
+            rule.onNodeWithTag("drawer_orders").performScrollTo().assertTextContains(ordersLabel)
+            rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        }
+        rule.onNodeWithTag("drawer_open").performClick()
+        rule.onNodeWithTag("drawer_theme").performScrollTo().performClick()
+        for (theme in listOf("light", "dark", "system")) {
+            rule.onNodeWithTag("theme_$theme").performClick()
+            rule.waitUntil { model.state.value.theme == theme }
+            rule.onNodeWithTag("theme_$theme").assertIsSelected()
+            captureHybrid("$theme-large-text")
+        }
+        rule.onNodeWithTag("sheet_close").performClick()
+        rule.onNodeWithTag("drawer_open").performClick()
+        rule.onNodeWithTag("drawer_orders").performScrollTo().performClick()
+        rule.waitUntil { model.state.value.screen == Screen.ORDERS }
+        rule.onNodeWithTag("orders_list").assertExists()
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.waitUntil { model.state.value.screen == Screen.MENU }
+        rule.onNodeWithTag("tab_profile").performClick()
+        rule.waitUntil { model.state.value.screen == Screen.PROFILE }
+        rule.onNodeWithTag("profile_list").performScrollToNode(hasTestTag("profile_logout"))
+        rule.onNodeWithTag("profile_logout").assertIsDisplayed()
+        InstrumentationRegistry.getInstrumentation().sendStatus(0, Bundle().apply { putString("masterCoffeeHybridUiComplete", "true") })
+    }
+
+    private fun captureHybrid(label: String) {
+        rule.waitForIdle()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val directory = requireNotNull(instrumentation.targetContext.getExternalFilesDir("verification"))
+        directory.mkdirs()
+        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        File(directory, "android-api${android.os.Build.VERSION.SDK_INT}-hybrid-$label.png").outputStream().use {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        bitmap.recycle()
     }
 }
 
