@@ -15,11 +15,13 @@ const {chromium} = modulePath ? await import(pathToFileURL(modulePath).href) : a
 const browser = await chromium.launch({headless:true,...(process.env.BROWSER_EXECUTABLE ? {executablePath:process.env.BROWSER_EXECUTABLE} : {})});
 const context = await browser.newContext({viewport:{width:1440,height:900},locale:'ru-RU',colorScheme:'light',reducedMotion:'reduce'});
 const page = await context.newPage();
-const evidence = path.join(adminRoot,'evidence'); await mkdir(evidence,{recursive:true});
+const runDate = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Qyzylorda',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const evidence = path.join(adminRoot,'evidence',runDate); await mkdir(evidence,{recursive:true});
 const errors = []; const sessions = [];
+await page.addInitScript(() => { Reflect.deleteProperty(window,'BarcodeDetector'); });
 page.on('pageerror',error => errors.push(error.message));
 async function request(route,{token,method='GET',body,key} = {}) {
-  const response = await fetch(`${origin}/api/v1/${route}`,{method,headers:{'Content-Type':'application/json',...(token ? {Authorization:`Bearer ${token}`} : {}),...(key ? {'Idempotency-Key':key} : {})},...(body === undefined ? {} : {body:JSON.stringify(body)})});
+  const response = await fetch(`${origin}/api/v1/${route}`,{method,headers:{'Content-Type':'application/json',...(token ? {Authorization:`Bearer ${token}`} : {}),...(key ? {'Idempotency-Key':key} : {})},signal:AbortSignal.timeout(15000),...(body === undefined ? {} : {body:JSON.stringify(body)})});
   const data = response.status === 204 ? null : await response.json();
   assert.ok(response.ok,`${method} ${route}: ${response.status} ${data?.error?.code || ''}`); return data;
 }
@@ -30,7 +32,7 @@ async function login(role) {
   await page.getByRole('button',{name:'Войти',exact:true}).click();
   const session = await (await result).json(); sessions.push(session.token); return session;
 }
-async function screenshot(name) { await page.screenshot({path:path.join(evidence,name),fullPage:true}); }
+async function screenshot(name) { await page.evaluate(() => window.scrollTo(0,0)); await page.screenshot({path:path.join(evidence,name),fullPage:true}); }
 async function noHorizontalOverflow() { assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'Layout must fit viewport'); }
 try {
   await page.goto(origin); await page.getByRole('heading',{name:'Войти в кабинет'}).waitFor();
@@ -49,11 +51,47 @@ try {
   const catalog = await request('catalog?cafe_id=1'); const product = catalog.products.find(item => item.id === 1);
   const quote = await request('orders/quote',{token:customer.token,method:'POST',body:{cafe_id:1,items:[{product_id:product.id,size_id:product.sizes[0].id,quantity:1,addon_ids:[],sugar:1,temperature:'standard',order_type:'takeaway'}],comment:'Проверка кабинета: заказ браузерного теста'}});
   const order = await request('orders',{token:customer.token,method:'POST',body:{quote_id:quote.id},key:`browser-smoke-${Date.now()}`});
+  // Exercise the actual SQL cursor boundary; these unpaid test orders are cancelled afterwards.
+  const paginationCustomer = await request('auth/register',{method:'POST',body:{email:`browser-queue-${Date.now()}@mastercoffee.invalid`,password,name:'Browser queue verification'}}); sessions.push(paginationCustomer.token);
+  const queueOrders = [];
+  try {
+    for (let index=0;index<51;index++) {
+      const pageQuote = await request('orders/quote',{token:paginationCustomer.token,method:'POST',body:{cafe_id:1,items:[{product_id:product.id,size_id:product.sizes[0].id,quantity:1,addon_ids:[],sugar:0,temperature:'standard',order_type:'takeaway'}],comment:'Browser pagination verification'}});
+      queueOrders.push(await request('orders',{token:paginationCustomer.token,method:'POST',body:{quote_id:pageQuote.id},key:`browser-queue-${index}-${Date.now()}`}));
+    }
+    await page.getByRole('button',{name:'Обновить',exact:true}).click(); await page.getByRole('button',{name:'Ранее',exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:new RegExp(`Заказ ${order.number},`)}).isVisible(),false,'Oldest order lies beyond the first50');
+    await page.route('**/api/v1/staff/orders?limit=50&before=*',route => route.abort('failed'));
+    await page.getByRole('button',{name:'Ранее',exact:true}).click(); await page.getByText('Не удалось обновить. Показаны последние полученные данные.',{exact:true}).waitFor();
+    await page.getByText('Страница 1',{exact:true}).waitFor();
+    await page.unroute('**/api/v1/staff/orders?limit=50&before=*');
+    await page.getByRole('button',{name:'Ранее',exact:true}).click(); await page.getByText('Страница 2',{exact:true}).waitFor();
+    await page.getByRole('button',{name:new RegExp(`Заказ ${order.number},`)}).waitFor(); await screenshot('queue-pagination-1440x900.png');
+    await page.setViewportSize({width:390,height:844}); await screenshot('queue-pagination-390x844.png'); await noHorizontalOverflow(); await page.setViewportSize({width:1440,height:900});
+    await page.getByRole('button',{name:'К новым заказам',exact:true}).click(); await page.getByText('Страница 1',{exact:true}).waitFor();
+  } finally {
+    for (const queueOrder of queueOrders) await request(`staff/orders/${queueOrder.id}/status`,{token:staff.token,method:'PATCH',body:{status:'cancelled'}});
+  }
   await page.getByRole('button',{name:'Обновить',exact:true}).click();
   await page.getByRole('button',{name:new RegExp(`Заказ ${order.number},`)}).click();
   await page.getByRole('heading',{name:`Заказ № ${order.number}`,exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Принять заказ',exact:true}).isVisible(),false,'Unpaid order cannot be accepted');
   await screenshot('queue-1440x900.png'); await noHorizontalOverflow();
+  const queueRow = page.getByRole('button',{name:new RegExp(`Заказ ${order.number},`)}); await queueRow.focus();
+  const refreshed = page.waitForResponse(response => response.url().endsWith('/api/v1/staff/orders?limit=50'));
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await refreshed; await page.locator('#orders-list[aria-busy="false"]').waitFor();
+  assert.equal(await queueRow.evaluate(node => node === document.activeElement),true,'Background queue refresh preserves keyboard focus');
+  // A new lookup must remove the old order's payment controls before the response arrives.
+  await page.route('**/api/v1/staff/orders/lookup',async route => { await new Promise(resolve => setTimeout(resolve,600)); await route.continue(); });
+  await page.getByLabel('Номер заказа или код из QR',{exact:true}).fill('ORDER-DOES-NOT-EXIST'); await page.getByRole('button',{name:'Найти',exact:true}).click();
+  await page.locator('#order-detail[aria-busy="true"]').waitFor(); assert.equal(await page.getByRole('button',{name:'Подтвердить оплату на кассе',exact:true}).isVisible(),false);
+  await page.getByRole('status').filter({hasText:'не найдены'}).waitFor(); assert.equal(await page.getByRole('button',{name:'Подтвердить оплату на кассе',exact:true}).isVisible(),false);
+  await page.unroute('**/api/v1/staff/orders/lookup');
+  await screenshot('lookup-error-1440x900.png');
+  await page.getByRole('button',{name:'Сканировать QR',exact:true}).click(); await page.getByRole('status').filter({hasText:'Введите номер заказа или код из QR вручную'}).waitFor();
+  await page.getByLabel('Номер заказа или код из QR',{exact:true}).fill(order.number); await page.getByRole('button',{name:'Найти',exact:true}).click();
+  await page.getByRole('heading',{name:`Заказ № ${order.number}`,exact:true}).waitFor();
+  for (const label of ['Принять заказ','Начать готовить','Заказ готов','Подтвердить выдачу']) assert.equal(await page.getByRole('button',{name:label,exact:true}).isVisible(),false,'Forbidden preparation step is absent before payment');
   // Request failure exercises the real UI's stale-data recovery without a fake response.
   await page.route('**/api/v1/staff/orders?limit=50',route => route.abort('failed'));
   await page.getByRole('button',{name:'Обновить',exact:true}).click();
@@ -75,7 +113,7 @@ try {
   await screenshot('completed-390x844.png');
   assert.equal((await request(`orders/${order.id}`,{token:customer.token})).status,'completed');
   await page.getByLabel('Номер заказа или код из QR',{exact:true}).fill(order.qr.payload); await page.getByRole('button',{name:'Найти',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'QR has already been used'}).waitFor();
+  await page.getByRole('status').filter({hasText:'Этот QR уже использован'}).waitFor(); assert.equal(await page.getByRole('button',{name:'Подтвердить оплату на кассе',exact:true}).isVisible(),false);
   // Revoke the actual browser session on the server, then verify private UI is removed.
   await request('auth/logout',{token:staff.token,method:'POST',body:{}});
   await page.getByRole('button',{name:'Обновить',exact:true}).click();
@@ -94,7 +132,10 @@ try {
   await screenshot('menu-1440x900.png'); await noHorizontalOverflow();
   await page.setViewportSize({width:390,height:844}); await screenshot('menu-390x844.png'); await noHorizontalOverflow();
   await page.evaluate(() => { document.documentElement.style.fontSize = '20px'; }); await noHorizontalOverflow();
-  await page.evaluate(() => { document.documentElement.style.fontSize = ''; }); await page.setViewportSize({width:1440,height:900});
+  await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+  const lightBackground = await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
+  await page.emulateMedia({colorScheme:'dark'}); assert.notEqual(await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor),lightBackground); await screenshot('menu-dark-390x844.png'); await noHorizontalOverflow();
+  await page.emulateMedia({colorScheme:'light'}); await page.setViewportSize({width:1440,height:900});
   await page.getByRole('button',{name:'Stories',exact:true}).click(); await page.getByRole('button',{name:'Добавить story',exact:true}).click();
   const title = `Проверка браузера ${Date.now()}`;
   await page.getByLabel('Заголовок',{exact:true}).fill(title);
@@ -108,9 +149,9 @@ try {
   await page.getByRole('button',{name:'Выйти',exact:true}).click(); await page.getByRole('heading',{name:'Войти в кабинет',exact:true}).waitFor();
   assert.equal(await page.getByLabel('Email',{exact:true}).inputValue(),'');
   assert.deepEqual(errors,[],'No unhandled browser JavaScript errors');
-  const result = {testedAt:new Date().toISOString(),origin,orderNumber:order.number,orderID:order.id,initiallyEmpty,viewports:['1440x900','390x844'],checks:['real staff/customer/admin login and permissions','QR lookup and payment','all preparation states and issuance','used QR rejection','session expiry and account DOM isolation','loading aria state','stale queue after failed request and recovery','preserved menu loyalty flag','real story image upload/create/delete','desktop and narrow overflow','keyboard login focus'],limitations:['camera hardware not exercised','browser is headless isolated Chromium; not a physical phone'],unhandledErrors:errors};
+  const result = {testedAt:new Date().toISOString(),clientDate:runDate,origin,orderNumber:order.number,orderID:order.id,initiallyEmpty,viewports:['1440x900','390x844'],checks:['real staff/customer/admin login and permissions','real SQL pagination past50active orders and failure recovery','failed/slowlookup cannot retain previous payment actions','manual number entry with unavailable camera API','QR lookup and payment','all preparation states and issuance','used QR rejection','session expiry and account DOM isolation','loading aria state','stale queue after failed request and recovery','preserved menu loyalty flag','real story image upload/create/delete','desktop and narrow overflow including20pxfont','system dark theme','keyboard login focus and queue refresh focus retention'],limitations:['camera hardware not exercised; BarcodeDetector intentionally absent for manual fallback test','browser is headless isolated Chromium; not Xiaomi15 or a physical phone'],unhandledErrors:errors};
   await writeFile(path.join(evidence,'browser-smoke.json'),JSON.stringify(result,null,2));
-  process.stdout.write(`PASS: real local API + cabinet workflow ${order.number}; screenshots in admin/evidence\n`);
+  process.stdout.write(`PASS: real local API + cabinet workflow ${order.number}; screenshots in admin/evidence/${runDate}\n`);
 } finally {
   for (const token of sessions) if (token) try { await request('auth/logout',{token,method:'POST',body:{}}); } catch { /* revoked sessions are already closed */ }
   await context.close(); await browser.close();

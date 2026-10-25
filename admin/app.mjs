@@ -1,7 +1,7 @@
 import {createApi, money, localDate, nextStatus, statusLabels, safeImageUrl} from './lib.mjs';
 
 const $ = id => document.getElementById(id);
-const state = {user:null,orders:[],selected:null,catalog:null,cafe:1,view:'orders',poll:null,loading:false,mutating:false,stream:null,scanTimer:null,scanGeneration:0,sessionGeneration:0,catalogGeneration:0,detailGeneration:0,lookupToken:null};
+const state = {user:null,orders:[],selected:null,catalog:null,cafe:1,view:'orders',poll:null,loading:false,detailLoading:false,mutating:false,stream:null,scanTimer:null,scanGeneration:0,sessionGeneration:0,catalogGeneration:0,detailGeneration:0,lookupToken:null,queueCursor:null,queuePage:1,nextBefore:null};
 const api = createApi({onExpired:() => endSession('Сессия истекла. Войдите снова.')});
 function element(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
 function button(text, action, className = 'secondary') { const node = element('button', text, className); node.type = 'button'; node.addEventListener('click', action); return node; }
@@ -11,10 +11,11 @@ function report(error) { if (state.user) notice(error.message,true); }
 async function busy(control, action) { control.disabled = true; try { await action(); } catch(error) { report(error); } finally { control.disabled = false; } }
 function endSession(message = '') {
   api.clear(); state.sessionGeneration++; clearInterval(state.poll); state.poll = null; stopCamera();
-  Object.assign(state,{user:null,orders:[],selected:null,catalog:null,loading:false,mutating:false,lookupToken:null,view:'orders'});
+  Object.assign(state,{user:null,orders:[],selected:null,catalog:null,loading:false,detailLoading:false,mutating:false,lookupToken:null,view:'orders',queueCursor:null,queuePage:1,nextBefore:null});
   for (const id of ['orders-list','products-list','stories-list','product-editor','story-editor','order-detail','session-name','menu-cafe']) $(id).replaceChildren();
   $('order-code').value = ''; $('email').value = ''; $('password').value = ''; $('notice').textContent = ''; $('notice').hidden = true;
   $('workspace').hidden = true; $('session').hidden = true; $('login-view').hidden = false;
+  $('queue-pages').hidden = true;
   $('login-error').textContent = message; $('login-error').hidden = !message; $('password').focus();
 }
 function startPolling() {
@@ -28,53 +29,81 @@ function setView(view) {
   if (view === 'orders') loadOrders(); else loadCatalog();
 }
 function emptyOrder() {
+  $('order-detail').setAttribute('aria-busy','false');
   const wrap = element('div',undefined,'empty-detail'); wrap.append(element('span','☕','coffee-mark'),element('h2','Выберите заказ'),element('p','Откройте его из очереди или введите номер.','muted')); $('order-detail').replaceChildren(wrap);
 }
 function renderQueue() {
   $('queue-heading').textContent = `Активные заказы · ${state.orders.length}`;
-  const list = $('orders-list'); list.replaceChildren();
-  if (!state.orders.length) { list.append(element('p','Сейчас активных заказов нет. Новые появятся здесь автоматически.','empty-state')); return; }
+  const list = $('orders-list'); const focusedOrder = list.contains(document.activeElement) ? document.activeElement.dataset.orderId : null; let restoreFocus;
+  list.replaceChildren();
+  if (!state.orders.length) { list.append(element('p',state.queuePage > 1 ? 'На этой странице активных заказов нет. Вернитесь к новым заказам.' : 'Сейчас активных заказов нет. Новые появятся здесь автоматически.','empty-state')); }
   for (const order of state.orders) {
     const row = button('',() => selectOrder(order.id),'order-row'); row.classList.toggle('selected',state.selected?.id === order.id);
+    row.dataset.orderId = order.id; if (focusedOrder === String(order.id)) restoreFocus = row;
     const top = element('div',undefined,'row-top'); top.append(element('strong',`№ ${order.number}`),badge(statusLabels[order.status] || order.status,order.status));
     const bottom = element('div',undefined,'row-bottom'); bottom.append(element('span',`${localDate(order.created_at)} · ${order.payment_status === 'paid' ? 'Оплачен' : 'Не оплачен'}`),element('strong',money(order.total)));
     row.append(top,bottom); row.setAttribute('aria-label',`Заказ ${order.number}, ${statusLabels[order.status] || order.status}, ${money(order.total)}`); row.setAttribute('aria-pressed',String(state.selected?.id === order.id)); list.append(row);
   }
+  if (focusedOrder) { const target = restoreFocus || $('queue-heading'); target.tabIndex = restoreFocus ? 0 : -1; target.focus({preventScroll:true}); }
+}
+function renderQueuePages() {
+  $('queue-pages').hidden = !state.nextBefore && state.queuePage === 1;
+  $('queue-newest').disabled = state.loading || state.queuePage === 1;
+  $('queue-older').disabled = state.loading || !state.nextBefore;
+  $('queue-page').textContent = `Страница ${state.queuePage}`;
+}
+async function changeQueuePage(older) {
+  if (state.loading || (older && !state.nextBefore)) return;
+  const previous = {cursor:state.queueCursor,page:state.queuePage}; const generation = state.sessionGeneration;
+  state.queueCursor = older ? state.nextBefore : null; state.queuePage = older ? state.queuePage+1 : 1;
+  if (!await loadOrders() && generation === state.sessionGeneration) { state.queueCursor = previous.cursor; state.queuePage = previous.page; renderQueuePages(); }
 }
 async function loadOrders(manual = true) {
-  if (state.loading || !state.user) return;
+  if (state.loading || !state.user) return false;
   state.loading = true; $('orders-list').setAttribute('aria-busy','true'); $('refresh-orders').disabled = true;
+  renderQueuePages();
   const generation = state.sessionGeneration;
+  let queueLoaded = false;
   if (!state.orders.length && !state.selected) $('orders-list').replaceChildren(element('p','Загрузка заказов…','empty-state'));
   try {
-    const result = await api.request('staff/orders?limit=50');
-    if (generation !== state.sessionGeneration) return;
-    state.orders = result.orders; renderQueue();
+    const result = await api.request(`staff/orders?limit=50${state.queueCursor ? `&before=${encodeURIComponent(state.queueCursor)}` : ''}`);
+    if (generation !== state.sessionGeneration) return false;
+    state.orders = result.orders; state.nextBefore = result.next_before; queueLoaded = true; renderQueue();
     if (state.selected) { const selectedID = state.selected.id; const detailGeneration = state.detailGeneration; const order = await api.request(`staff/orders/${encodeURIComponent(selectedID)}`); if (generation !== state.sessionGeneration) return; if (detailGeneration === state.detailGeneration && state.selected?.id === selectedID) { state.selected = order; renderOrder(); } }
     $('poll-status').textContent = `Обновлено ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}. Автообновление каждые 8 секунд.`;
     if (manual) notice('');
+    return true;
   } catch(error) {
     if (generation !== state.sessionGeneration) return;
     $('poll-status').textContent = 'Не удалось обновить. Показаны последние полученные данные.';
     if (!state.orders.length) $('orders-list').replaceChildren(element('p','Очередь недоступна. Нажмите «Обновить».','empty-state'));
     report(error);
-  } finally { if (generation === state.sessionGeneration) { state.loading = false; $('orders-list').setAttribute('aria-busy','false'); $('refresh-orders').disabled = false; } }
+    return queueLoaded;
+  } finally { if (generation === state.sessionGeneration) { state.loading = false; $('orders-list').setAttribute('aria-busy','false'); $('refresh-orders').disabled = false; renderQueuePages(); } }
+}
+function beginOrderSelection() {
+  state.selected = null; state.lookupToken = null; state.detailLoading = true; const generation = ++state.detailGeneration;
+  renderQueue(); renderOrder(); return generation;
 }
 async function selectOrder(id) {
   const generation = state.sessionGeneration;
-  const detailGeneration = ++state.detailGeneration;
-  try { const order = await api.request(`staff/orders/${encodeURIComponent(id)}`); if (generation !== state.sessionGeneration || detailGeneration !== state.detailGeneration) return; state.selected = order; state.lookupToken = null; renderQueue(); renderOrder(); if (window.matchMedia('(max-width:650px)').matches) { $('order-detail').scrollIntoView({block:'start'}); $('order-detail').focus({preventScroll:true}); } }
-  catch(error) { report(error); }
+  const detailGeneration = beginOrderSelection();
+  try { const order = await api.request(`staff/orders/${encodeURIComponent(id)}`); if (generation !== state.sessionGeneration || detailGeneration !== state.detailGeneration) return; state.selected = order; state.detailLoading = false; notice(''); renderQueue(); renderOrder(); if (window.matchMedia('(max-width:650px)').matches) { $('order-detail').scrollIntoView({block:'start'}); $('order-detail').focus({preventScroll:true}); } }
+  catch(error) { if (generation === state.sessionGeneration && detailGeneration === state.detailGeneration) { state.detailLoading = false; renderOrder(); report(error); } }
 }
 async function lookup(code) {
   const generation = state.sessionGeneration;
-  const detailGeneration = ++state.detailGeneration;
-  const order = await api.request('staff/orders/lookup',{method:'POST',body:{code:code.trim()}});
-  if (generation !== state.sessionGeneration || detailGeneration !== state.detailGeneration) return;
-  state.selected = order; state.lookupToken = code.startsWith('mastercoffee:order:') || /^[A-Za-z0-9_-]{40,}$/.test(code) ? code : null;
-  notice(`Найден заказ № ${order.number}. Проверьте состав и оплату.`); renderQueue(); renderOrder(); $('order-detail').focus();
+  const detailGeneration = beginOrderSelection();
+  try {
+    const order = await api.request('staff/orders/lookup',{method:'POST',body:{code:code.trim()}});
+    if (generation !== state.sessionGeneration || detailGeneration !== state.detailGeneration) return;
+    state.selected = order; state.detailLoading = false; state.lookupToken = code.startsWith('mastercoffee:order:') || /^[A-Za-z0-9_-]{40,}$/.test(code) ? code : null;
+    notice(`Найден заказ № ${order.number}. Проверьте состав и оплату.`); renderQueue(); renderOrder(); $('order-detail').focus();
+  } catch(error) { if (generation === state.sessionGeneration && detailGeneration === state.detailGeneration) { state.detailLoading = false; renderOrder(); throw error; } }
 }
 function renderOrder() {
+  $('order-detail').setAttribute('aria-busy',String(state.detailLoading));
+  if (state.detailLoading) { const loading = element('p','Загрузка заказа…','empty-state'); loading.setAttribute('role','status'); $('order-detail').replaceChildren(loading); return; }
   const order = state.selected; if (!order) { emptyOrder(); return; }
   const wrap = $('order-detail'); wrap.replaceChildren();
   const heading = element('div',undefined,'detail-heading'); heading.append(element('h2',`Заказ № ${order.number}`));
@@ -103,7 +132,7 @@ function renderOrder() {
   wrap.append(actions);
 }
 async function mutateOrder(control, action, body) {
-  if (state.mutating) return;
+  if (state.mutating || state.detailLoading || !state.selected) return;
   state.mutating = true;
   const selectedID = state.selected?.id; const generation = state.sessionGeneration;
   for (const actionButton of $('order-detail').querySelectorAll('button')) actionButton.disabled = true;
@@ -239,6 +268,7 @@ $('login-form').addEventListener('submit',async event => {
 $('logout').addEventListener('click',async event => { const control = event.currentTarget; control.disabled = true; let message = ''; try { await api.request('auth/logout',{method:'POST',body:{}}); } catch(error) { message = 'Данные очищены из кабинета. Сервер не подтвердил выход; сессия завершится по сроку действия.'; } finally { endSession(message); control.disabled = false; } });
 $('lookup-form').addEventListener('submit',event => { event.preventDefault(); busy(event.currentTarget.querySelector('button'),() => lookup($('order-code').value.trim())); });
 $('refresh-orders').addEventListener('click',() => loadOrders());
+$('queue-older').addEventListener('click',() => changeQueuePage(true)); $('queue-newest').addEventListener('click',() => changeQueuePage(false));
 for (const view of ['orders','menu','stories']) $(`tab-${view}`).addEventListener('click',() => setView(view));
 $('refresh-menu').addEventListener('click',event => busy(event.currentTarget,loadCatalog));
 $('menu-cafe').addEventListener('change',() => { state.cafe = Number($('menu-cafe').value); $('product-editor').replaceChildren(element('p','Выберите товар для редактирования.','muted')); loadCatalog(); });

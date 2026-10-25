@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createApi,ApiError,nextStatus,safeImageUrl,money} from '../lib.mjs';
+import {createApi,ApiError,nextStatus,safeImageUrl,money,apiErrorMessage} from '../lib.mjs';
 
 const json = (body,status=200) => new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
 test('payment and preparation are separate; unpaid or terminal orders have no next action',() => {
@@ -49,5 +49,11 @@ test('network errors and timeouts never return a successful mutation',async () =
 test('empty 204 logout response is accepted; unexpected HTML and structured errors surface',async () => {
   assert.equal(await createApi({fetchImpl:async () => new Response(null,{status:204})}).request('auth/logout',{method:'POST',body:{}}),null);
   await assert.rejects(createApi({fetchImpl:async () => new Response('<html>bad gateway</html>',{status:502})}).request('staff/orders'),/неожиданный/);
-  await assert.rejects(createApi({fetchImpl:async () => json({error:{message:'QR просрочен',code:'qr_expired'}},409)}).request('staff/orders/lookup',{method:'POST',body:{code:'x'}}),error => error.code === 'qr_expired' && error.message === 'QR просрочен');
+  await assert.rejects(createApi({fetchImpl:async () => json({error:{message:'QR expired',code:'qr_expired'}},410)}).request('staff/orders/lookup',{method:'POST',body:{code:'x'}}),error => error.code === 'qr_expired' && error.message.includes('Срок QR истёк'));
+});
+test('cash desk errors give actionable Russian recovery without changing server codes',() => {
+  assert.match(apiErrorMessage({error:{code:'qr_used',message:'QR has already been used'}}),/по номеру/);
+  assert.match(apiErrorMessage({error:{code:'invalid_transition'}}),/оплата/);
+  assert.match(apiErrorMessage({error:{code:'image_too_large'}}),/5 МБ/);
+  assert.equal(apiErrorMessage({error:{code:'future_error',message:'Specific server detail'}}),'Specific server detail');
 });

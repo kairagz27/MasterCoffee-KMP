@@ -5,6 +5,23 @@ export function money(value) { return `${new Intl.NumberFormat('ru-RU', {maximum
 export function localDate(value) { const date = new Date(value); return Number.isNaN(date.getTime()) ? 'Время неизвестно' : date.toLocaleString('ru-RU', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
 export function safeImageUrl(value) { if (typeof value !== 'string') return null; if (/^\/(uploads|assets)\/[a-zA-Z0-9/_.-]+$/.test(value) && !value.includes('..')) return value; try { const url = new URL(value); return url.protocol === 'https:' ? url.href : null; } catch { return null; } }
 export class ApiError extends Error { constructor(message, status = 0, code = '') { super(message); this.name = 'ApiError'; this.status = status; this.code = code; } }
+const errorMessages = Object.freeze({
+  invalid_credentials:'Неверный email или пароль.',
+  forbidden:'Нет доступа к заказу этой кофейни или к выбранной операции.',
+  not_found:'Заказ или запись не найдены. Проверьте номер и обновите данные.',
+  qr_not_found:'QR не найден. Проверьте код или найдите заказ по номеру.',
+  qr_expired:'Срок QR истёк. Попросите клиента обновить QR в приложении.',
+  qr_used:'Этот QR уже использован. Найдите заказ по номеру, чтобы продолжить обработку.',
+  order_cancelled:'Заказ отменён. Оплата и приготовление недоступны.',
+  invalid_transition:'Этот переход недоступен. Обновите заказ и соблюдайте этапы: оплата, принятие, приготовление, готовность, выдача.',
+  rate_limited:'Слишком много попыток. Подождите минуту и повторите вход.',
+  product_exists:'Товар с таким ID уже существует. Обновите каталог и откройте его для проверки.',
+  validation:'Проверьте заполненные поля и указанные ограничения.',
+  image_too_large:'Изображение слишком большое. Максимум — 5 МБ.',
+  invalid_image:'Выберите корректный JPEG или PNG размером не более 4096 × 4096 пикселей.',
+  unsupported_media_type:'Этот формат файла или запроса не поддерживается.',
+});
+export function apiErrorMessage(data) { return errorMessages[data?.error?.code] || data?.error?.message || 'Запрос не выполнен. Повторите попытку.'; }
 export function createApi({fetchImpl = globalThis.fetch, onExpired = () => {}, timeoutMs = 12000} = {}) {
   let token = '';
   let generation = 0;
@@ -26,7 +43,7 @@ export function createApi({fetchImpl = globalThis.fetch, onExpired = () => {}, t
       try { data = text ? JSON.parse(text) : null; } catch { if (response.status === 401 && token) { clear(); onExpired(); } throw new ApiError('Сервер вернул неожиданный ответ. Повторите запрос.', response.status); }
       if (!response.ok) {
         if (response.status === 401 && token) { clear(); onExpired(); }
-        throw new ApiError(data?.error?.message || 'Запрос не выполнен. Повторите попытку.', response.status, data?.error?.code || '');
+        throw new ApiError(apiErrorMessage(data), response.status, data?.error?.code || '');
       }
       return data;
     } catch (error) {
