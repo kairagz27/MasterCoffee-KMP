@@ -1,0 +1,107 @@
+{
+  "orderNumber": "MC-001109",
+  "source": "User manually created order in actual MainActivity on connected Xiaomi15; root supplied exact MC number",
+  "testCashPayment": true,
+  "outcome": "PASS: actual MainActivity Xiaomi order -> real staff cabinet cash/preparation/handoff -> phone completed/history and loyalty",
+  "phoneCreatedEvidence": "artifacts/xiaomi/02-created-qr.png",
+  "phoneReadyEvidence": "artifacts/xiaomi/04-ready-paid.png",
+  "phoneCompletedEvidence": "artifacts/xiaomi/05-completed-paid.png",
+  "phoneObservation": "Mobile agent visually confirmed same order/960KZT, ready+paid before handoff, then completed+paid/history after polling with no pointer input",
+  "loyaltyObservation": {
+    "qualifyingOrders": 1,
+    "discountPercent": 3,
+    "source": "Mobile agent visually confirmed actual Xiaomi MainActivity Profile after completion",
+    "privateEvidence": "artifacts/xiaomi/06-profile-private.png; contains account data and is not published"
+  },
+  "restorationObservation": {
+    "source": "Mobile agent confirmed install-r02713ac and fresh process restored same account fingerprint, PROFILE and qualifyingOrders1",
+    "privateEvidence": "artifacts/xiaomi/07-profile-restored-private.png; not published",
+    "tokenFreeResult": "artifacts/xiaomi/cold-restore-result.json"
+  },
+  "stages": [
+    {
+      "action": "Number lookup",
+      "at": "2026-10-25T05:04:18.356Z",
+      "number": "MC-001109",
+      "cafeId": 1,
+      "status": "created",
+      "paymentStatus": "unpaid",
+      "subtotal": 990,
+      "discountPercent": 3,
+      "discount": 30,
+      "total": 960,
+      "currency": "KZT",
+      "items": [
+        {
+          "name": "Американо",
+          "size": "350 мл",
+          "quantity": 1,
+          "addons": [
+            "Сироп Карамель"
+          ],
+          "sugar": 0,
+          "temperature": "standard",
+          "orderType": "takeaway",
+          "unitPrice": 990,
+          "lineTotal": 990
+        }
+      ]
+    },
+    {
+      "at": "2026-10-25T05:06:21.115Z",
+      "action": "Test cash payment (HTTP200), verified by subsequent GET",
+      "number": "MC-001109",
+      "status": "created",
+      "paymentStatus": "paid",
+      "total": 960,
+      "uiMatchedServer": true
+    },
+    {
+      "at": "2026-10-25T05:06:21.202Z",
+      "action": "Принять заказ",
+      "httpStatus": 200,
+      "number": "MC-001109",
+      "status": "accepted",
+      "paymentStatus": "paid",
+      "total": 960,
+      "uiMatchedServer": true
+    },
+    {
+      "at": "2026-10-25T05:06:21.305Z",
+      "action": "Начать готовить",
+      "httpStatus": 200,
+      "number": "MC-001109",
+      "status": "preparing",
+      "paymentStatus": "paid",
+      "total": 960,
+      "uiMatchedServer": true
+    },
+    {
+      "at": "2026-10-25T05:06:21.387Z",
+      "action": "Заказ готов",
+      "httpStatus": 200,
+      "number": "MC-001109",
+      "status": "ready",
+      "paymentStatus": "paid",
+      "total": 960,
+      "uiMatchedServer": true
+    },
+    {
+      "at": "2026-10-25T05:10:10.851Z",
+      "action": "Подтвердить выдачу",
+      "httpStatus": 200,
+      "number": "MC-001109",
+      "status": "completed",
+      "paymentStatus": "paid",
+      "total": 960,
+      "uiMatchedServer": true
+    }
+  ],
+  "unhandledBrowserErrors": [],
+  "limitations": [
+    "Customer taps were performed manually by user; OEM rejected automated injection",
+    "Physical camera not exercised; staff used manual server number",
+    "No online payment provider or real charge",
+    "Gallery consists of separate unchanged screenshots; continuous transition video was not captured"
+  ]
+}

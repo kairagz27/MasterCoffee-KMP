@@ -1,0 +1,146 @@
+{
+  "orderNumber": "MC-001111",
+  "revision": "3f082dd",
+  "source": "User manually created this order in actual hybrid MainActivity on Xiaomi15 Android16, LIGHT theme; staff processed same order in real web cabinet",
+  "testCashPayment": true,
+  "sameOwnerAsPreviousPhoneOrder": true,
+  "qualifiesForReceipt": true,
+  "phoneCreatedEvidence": "artifacts/xiaomi/18-hybrid-created.png",
+  "outcome": "PASS: actual Xiaomi hybrid order creation and Ready/Paid then Completed/Paid observations match real staff cabinet and server",
+  "stages": [
+    {
+      "at": "2026-10-25T06:02:55.631Z",
+      "action": "Actual phone server number lookup",
+      "number": "MC-001111",
+      "cafeId": 1,
+      "status": "created",
+      "paymentStatus": "unpaid",
+      "subtotal": 890,
+      "discountPercent": 3,
+      "discount": 27,
+      "total": 863,
+      "items": [
+        {
+          "name": "Эспрессо",
+          "size": "30 мл",
+          "quantity": 1,
+          "addons": [],
+          "sugar": 0,
+          "temperature": "standard",
+          "orderType": "takeaway",
+          "lineTotal": 890,
+          "loyaltyEligible": true
+        }
+      ],
+      "screenshot": "01-created.png"
+    },
+    {
+      "at": "2026-10-25T06:02:55.668Z",
+      "action": "Подтвердить оплату на кассе",
+      "httpStatus": 200,
+      "number": "MC-001111",
+      "status": "created",
+      "paymentStatus": "paid",
+      "total": 863,
+      "uiMatchedServer": true,
+      "screenshot": "02-paid.png"
+    },
+    {
+      "at": "2026-10-25T06:02:55.773Z",
+      "action": "Принять заказ",
+      "httpStatus": 200,
+      "number": "MC-001111",
+      "status": "accepted",
+      "paymentStatus": "paid",
+      "total": 863,
+      "uiMatchedServer": true,
+      "screenshot": "03-accepted.png"
+    },
+    {
+      "at": "2026-10-25T06:02:55.871Z",
+      "action": "Начать готовить",
+      "httpStatus": 200,
+      "number": "MC-001111",
+      "status": "preparing",
+      "paymentStatus": "paid",
+      "total": 863,
+      "uiMatchedServer": true,
+      "screenshot": "04-preparing.png"
+    },
+    {
+      "at": "2026-10-25T06:02:55.966Z",
+      "action": "Заказ готов",
+      "httpStatus": 200,
+      "number": "MC-001111",
+      "status": "ready",
+      "paymentStatus": "paid",
+      "total": 863,
+      "uiMatchedServer": true,
+      "screenshot": "05-ready.png"
+    },
+    {
+      "at": "2026-10-25T06:04:59.412Z",
+      "action": "Подтвердить выдачу",
+      "httpStatus": 200,
+      "number": "MC-001111",
+      "status": "completed",
+      "paymentStatus": "paid",
+      "total": 863,
+      "uiMatchedServer": true,
+      "screenshot": "06-completed.png"
+    }
+  ],
+  "unhandledBrowserErrors": [],
+  "limitations": [
+    "Staff lookup used order number, physical QR camera not tested",
+    "No real online payment charge"
+  ],
+  "phoneReadyEvidence": "artifacts/xiaomi/19-hybrid-ready-paid.png",
+  "phoneReadyObservedBeforeHandoff": true,
+  "phoneCompletedEvidence": "artifacts/xiaomi/20-hybrid-completed-paid.png",
+  "phoneCompletedObservedWithoutInput": true,
+  "publicGallery": "docs/evidence/2026-10-25/index.html",
+  "phoneVideo": {
+    "source": "artifacts/xiaomi/hybrid-handoff-unreviewed.mp4",
+    "durationSeconds": 61.767844,
+    "width": 720,
+    "height": 1600,
+    "sha256": "3b20517c9504fc8d2c6ae4d7995e781723093719a7caee75207689d410f1600d",
+    "review": "PASS decoded actual Ready/Paid to Completed/Paid transition between22and23seconds; does not show creation or initial payment"
+  },
+  "phoneScreenshots": [
+    {
+      "source": "18-hybrid-created.png",
+      "public": "02-created-qr.png",
+      "sha256": "27bb82835382f075f819b3d83aa13bae912a2e234aeba264697adb5081fe19b0",
+      "screenClock": "11:01",
+      "observedStatus": "created/unpaid",
+      "rawPixelsUnmodified": true
+    },
+    {
+      "source": "19-hybrid-ready-paid.png",
+      "public": "04-ready-paid.png",
+      "sha256": "40dd814ea30a81b23d9a07f277b8d40f9e50b8f25ea7a294eb9c41386cb92137",
+      "screenClock": "11:04",
+      "observedStatus": "ready/paid",
+      "rawPixelsUnmodified": true
+    },
+    {
+      "source": "20-hybrid-completed-paid.png",
+      "public": "05-completed-paid.png",
+      "sha256": "46ec5e5d2030d5b71e5348e5adbab2edc49a8bb087cffdcf7a5da053c7ee0f02",
+      "screenClock": "11:05",
+      "observedStatus": "completed/paid",
+      "rawPixelsUnmodified": true
+    }
+  ],
+  "loyaltyObservation": {
+    "qualifyingOrders": 2,
+    "discountPercent": 3,
+    "source": "Mobile agent visually confirmed actual Xiaomi MainActivity Profile after the final C1 install-r update; same account restored",
+    "observedOnActualPhone": true,
+    "afterLatestUpdate": true,
+    "privateEvidence": "artifacts/xiaomi/22-final-profile-two-private.png and XML; contain account data and are not published",
+    "identityComparison": "Same account verified privately; no identity or fingerprint published"
+  }
+}

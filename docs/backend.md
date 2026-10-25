@@ -96,9 +96,13 @@ go run ./cmd/accounts --email staff@your-owned-domain --name "Сотрудник
 ```sh
 docker compose --env-file .env.https.local -f deploy/compose.https.yaml build
 docker compose --env-file .env.https.local -f deploy/compose.https.yaml run --rm --no-deps api /app/coffee-migrate
-docker compose --env-file .env.https.local -f deploy/compose.https.yaml run --rm --no-deps -v /private/path/staff-password:/run/secrets/new_password:ro api /app/coffee-accounts --email staff@your-owned-domain --name "Сотрудник" --role staff --cafe 1 --password-file /run/secrets/new_password
+# Первый запуск API заполняет каталог и кофейни без демонстрационных аккаунтов.
+docker compose --env-file .env.https.local -f deploy/compose.https.yaml up -d --wait api
+docker compose --env-file .env.https.local -f deploy/compose.https.yaml run --rm --no-deps --user 0:0 -v /private/path/staff-password:/run/secrets/new_password:ro api /app/coffee-accounts --email staff@your-owned-domain --name "Сотрудник" --role staff --cafe 1 --password-file /run/secrets/new_password
 docker compose --env-file .env.https.local -f deploy/compose.https.yaml up -d --wait
 ```
+
+На пустой БД миграции создают только схему; staff можно создать после первого успешного запуска API, когда уже существует активная кофейня. API работает от пользователя `coffee`: настройте права Linux-файлов `database_url` и CA так, чтобы этот пользователь контейнера мог их читать, сохранив закрытый доступ на хосте. Одноразовая команда accounts в примере использует root внутри контейнера, чтобы прочитать смонтированный пароль с правами 0600 без изменения владельца или разрешений файла; это не меняет пользователя работающего API.
 
 `DATABASE_URL_FILE` и `DEMO_PASSWORD_FILE` читают максимум8КиБ, удаляя только завершающий перевод строки. Одновременные `KEY` и `KEY_FILE` запрещены, чтобы не использовать неожиданный секрет. `SEED_DEMO=false`, `AUTO_MIGRATE=false` и production-проверка verify-full обязательны. Файлы секретов, TLS private keys и резервные копии нельзя коммитить. API намеренно не доверяет произвольному `X-Forwarded-For`; auth limiter за nginx разделяется между его клиентами, что допустимо для малочисленного пилота, но требует отдельного решения перед публичным запуском.
 

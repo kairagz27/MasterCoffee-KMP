@@ -15,6 +15,8 @@
 
 ## От нажатия до БД и обратно
 
+Визуальная оболочка вынесена в [CoffeeShell.kt](../composeApp/src/commonMain/kotlin/kz/master_coffee/app/presentation/CoffeeShell.kt): исходная боковая шторка, плавающая навигация с тенью, нижние панели языка/темы. Она вызывает те же методы ViewModel и не хранит собственную копию бизнес-данных. Состояние шторки/панелей сбрасывается при смене аккаунта; Back сначала закрывает открытую панель.
+
 ```mermaid
 sequenceDiagram
     participant UI as CartScreen

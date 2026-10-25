@@ -1,0 +1,39 @@
+{
+  "reviewedAt": "2026-10-25T06:08:50.886Z",
+  "revision": "3f082dd",
+  "orderNumber": "MC-001111",
+  "video": "hybrid-handoff.mp4",
+  "bytes": 133230,
+  "sha256": "3b20517c9504fc8d2c6ae4d7995e781723093719a7caee75207689d410f1600d",
+  "durationSeconds": 61.767844,
+  "width": 720,
+  "height": 1600,
+  "capture": "Actual Xiaomi15 Android16 MainActivity in LIGHT theme; real staff cabinet changed the same order",
+  "scope": "Continuous phone Ready/Paid to Completed/Paid recording; creation shown separately in unchanged gallery screenshots",
+  "decoder": "Isolated Google Chrome HTMLVideoElement; original MP4 bytes, no transcoding",
+  "inspection": {
+    "sampledEachIntegerSecondFrom": 0,
+    "sampledEachIntegerSecondThrough": 61,
+    "sampledFrames": 63,
+    "visuallyReviewedSeconds": [
+      0,
+      10,
+      20,
+      22,
+      23,
+      25,
+      40,
+      60,
+      61.717844
+    ],
+    "observedReadyThroughSecond": 22,
+    "observedCompletedFromSecond": 23,
+    "lastDecodedFrameSecond": 61.717844
+  },
+  "privacyReview": "Reviewed frames show only the order screen; no customer name,email,credentials,QR,external applications or panels",
+  "outcome": "PASS: actual Ready/Paid to Completed/Paid transition recorded",
+  "limitations": [
+    "Order creation and initial cashier payment are outside this clip",
+    "No physical QR camera check or online payment charge"
+  ]
+}

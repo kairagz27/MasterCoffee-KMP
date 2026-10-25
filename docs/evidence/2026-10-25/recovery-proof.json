@@ -1,0 +1,42 @@
+{
+  "recorded_at_utc": "2026-10-25 05:25:23 UTC",
+  "scenario": "Committed order response (HTTP 201) dropped; app process restarted; customer recovered the same pending request.",
+  "client": "Xiaomi 15, Android 16",
+  "database": "Local PostgreSQL 18.1",
+  "observation": "Read-only SQL snapshots; no order or loyalty mutations by the observer.",
+  "before": {
+    "orders_count": 1,
+    "latest_order_number": "MC-001109",
+    "order_status": "completed",
+    "loyalty_ledger_count": 1
+  },
+  "after_dropped_201": {
+    "orders_count": 2,
+    "latest_order_number": "MC-001110",
+    "order_status": "created",
+    "payment_status": "unpaid",
+    "loyalty_ledger_count": 1
+  },
+  "after_restart_and_retry": {
+    "orders_count": 2,
+    "latest_order_number": "MC-001110",
+    "order_status": "created",
+    "payment_status": "unpaid",
+    "loyalty_ledger_count": 1
+  },
+  "fingerprints": {
+    "idempotency_key_sha256": "daf33c1a11437c6e24d152a8806af6af2759bd2025ad6cbcf2d3c7a6021c831d",
+    "quote_id_sha256": "84f64816dce21a0c5bb486d4754d7a0232766b270d8227cab94438a49725db38",
+    "persisted_request_hash_sha256": "84f64816dce21a0c5bb486d4754d7a0232766b270d8227cab94438a49725db38"
+  },
+  "assertions": {
+    "one_new_order_since_baseline": true,
+    "no_additional_order_on_retry": true,
+    "same_order": true,
+    "same_idempotency_key_hash": true,
+    "same_quote_hash": true,
+    "persisted_request_hash_matches": true,
+    "no_extra_loyalty_receipt": true
+  },
+  "result": "PASS"
+}
